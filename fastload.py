@@ -55,6 +55,9 @@ class SharedModel:
                     raise
                 # max_len solo es un tope: el relleno es dinámico, no encarece estados cortos.
                 agent.cfg["max_len"], agent.cfg["head_max_len"] = self.max_len, self.head_max_len
+                # La primera inferencia paga la preparación de kernels (sobre todo en GPU): se hace aquí
+                # para no cobrársela a la primera decisión de una demo.
+                agent.predict("Hola", {"calentar": {"type": "noul", "instructions": "¿Es un saludo?"}})
                 self.agent, self.status, self.device = agent, "ready", device
         return self.agent
 
