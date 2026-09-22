@@ -2,7 +2,7 @@
 
 # Laya Showcase
 
-**Tres demos en el navegador para ver decidir a [Laya](https://huggingface.co/convaiinnovations/laya),
+**Cuatro demos en el navegador para ver decidir a [Laya](https://huggingface.co/convaiinnovations/laya),
 un modelo de decisión open source que corre en tu CPU o en tu GPU.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-6c4ee3?logo=python&logoColor=white)](#empezar)
@@ -45,7 +45,7 @@ agent.predict({"ticket": "No conecta la VPN desde casa. Trabajo en remoto y..."}
 
 ## Las demos
 
-Las tres tienen dos modos, y el que elijas se recuerda al cambiar de demo:
+Las cuatro tienen dos modos, y el que elijas se recuerda al cambiar de demo:
 
 - **Real-Time**: cada decisión aparece en cuanto Laya la toma, y al terminar un indicador muestra
   los milisegundos por decisión y si corrió en GPU o CPU.
@@ -54,6 +54,7 @@ Las tres tienen dos modos, y el que elijas se recuerda al cambiar de demo:
 | En Real-Time, RTX 4050 | Tanda completa | Por decisión |
 |---|---|---|
 | Mesa de ayuda: 20 tickets | 0,4 s | 20 ms |
+| Ruta: 7 cursos encadenados | 0,6 s | 19 ms |
 | Atlas: 176 países | 2,4 s | 13 ms |
 | City: un viaje de 19 decisiones | 3,1 s con el taxi animado | 31 ms |
 
@@ -74,6 +75,20 @@ confianza separa bien lo fiable de lo dudoso. «Ayuda urgente, no me funciona na
 como debe.
 
 <img src="docs/tickets.png" alt="Mesa de ayuda con el tablero agrupado por experto y un ticket en revisión" width="880">
+
+### Ruta
+
+Un estudiante, un objetivo y un catálogo de 17 cursos. Laya no escribe la ruta de una vez: en cada
+paso las reglas filtran los cursos cuyos prerrequisitos ya cumple y el modelo reparte probabilidad
+entre esos candidatos; el curso elegido actualiza sus habilidades y el estado vuelve a entrar. Es
+una política `P(acción | estado)` con el bucle a la vista: estado → candidatos → decisión → curso →
+estado nuevo.
+
+Cada curso de la ruta dice qué habilidad aporta, y el que no hacía falta queda marcado. Con los
+tres objetivos y los tres estudiantes, Laya llega al objetivo en las 9 rutas y 55 de los 59 cursos
+que elige aportan algo, contando los que desbloquean a otro.
+
+<img src="docs/ruta.png" alt="Ruta: el estado del estudiante, los candidatos, las probabilidades y los siete cursos elegidos" width="880">
 
 ### Atlas
 
@@ -124,12 +139,13 @@ lo indica. Medido en una RTX 4050 de portátil frente a su propia CPU, con el mi
 | Atlas: un barrido de 176 países | 15,9 s | 1,9 s | **8,4×** |
 | City: una decisión | 429 ms | 24 ms | **18×** |
 | Mesa de ayuda: 20 tickets | 3,9 s | 0,7 s | **5,9×** |
+| Ruta: 7 cursos encadenados | 1,3 s | 0,15 s | **8,5×** |
 | Carga del modelo | 4,3 s | 2,9 s | 1,5× |
 
 En GPU Laya calcula en bf16, y aun así las decisiones son las mismas. Los 20 tickets reciben la
 misma categoría, prioridad y semáforo, con 1,4 puntos de confianza de diferencia como mucho. El
-Atlas da el mismo top 10 en cinco consultas y City toma las mismas 19 decisiones. Usa 1,5 GB de
-memoria de vídeo.
+Atlas da el mismo top 10 en cinco consultas, City toma las mismas 19 decisiones y la Ruta elige los
+mismos cursos en el mismo orden. Usa 1,5 GB de memoria de vídeo.
 
 ## Cómo está hecho
 
@@ -137,16 +153,17 @@ memoria de vídeo.
 flowchart LR
     B["Navegador<br/>HTML + CSS + JS"] -- "JSON y streaming SSE" --> S["server.py<br/>http.server"]
     S --> T["tickets.py"]
+    S --> R["courses.py"]
     S --> A["atlas.py"]
     S --> C["city.py"]
-    T & A & C --> M["fastload.py<br/>una sola instancia de Laya"]
+    T & R & A & C --> M["fastload.py<br/>una sola instancia de Laya"]
 ```
 
 - **Sin dependencias extra.** Aparte de `laya`, solo la biblioteca estándar de Python. El frontend
   no tiene paso de compilación, y la tipografía va incluida.
 - **Resultados en streaming.** El Atlas y la Mesa de ayuda reciben cada resultado por SSE en cuanto
   sale. Una consulta nueva cancela la anterior en el servidor.
-- **Un modelo para todo.** Las tres demos comparten una instancia de Laya con las inferencias en
+- **Un modelo para todo.** Las cuatro demos comparten una instancia de Laya con las inferencias en
   serie. Antes de cada inferencia se comprueba que el estado cabe en el contexto, porque Laya lo
   truncaría en silencio.
 
@@ -166,6 +183,13 @@ Cada decisión de diseño salió de medir con el modelo real:
   prioridad no (daba 93 % al ticket más vago). El semáforo usa solo la primera.
 - **Las decisiones dependientes se derivan.** Preguntar el experto aparte daba «Hardware» asignado
   a ciberseguridad; ahora el experto es el responsable de la categoría.
+- **El estado más completo no es el mejor.** En la Ruta, darle también el objetivo escrito y la
+  descripción del estudiante subía de 16 a 26 (de unos 60) los cursos elegidos que no enseñaban
+  ninguna habilidad del objetivo; las horas libres, otros 5. El estado son tres listas y las horas
+  libres las usan solo las reglas, para estimar las semanas.
+- **Laya no planifica dos pasos.** Elige bien el curso siguiente, pero nunca tomaba Git, y sin Git
+  no llegaba a «Modelos en producción»: 4 de las 9 rutas se quedaban sin objetivo. Encadenar
+  prerrequisitos es una regla; decidir cuál toca, del modelo.
 - **Las instrucciones en inglés clasifican mejor**, aunque el ticket esté en español: la prioridad
   acierta 11/20 frente a 7/20.
 - **Torch solo CPU por defecto.** El entorno pasa de 5,6 GB a 1,2 GB, a la misma velocidad en CPU.
@@ -183,6 +207,7 @@ Donde no llega, también se cuenta. El Atlas confunde el vino de uva con el vino
 ├── server.py        servidor y API
 ├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU
 ├── tickets.py       Mesa de ayuda: tickets, preguntas y semáforo
+├── courses.py       Ruta: catálogo, objetivos, prerrequisitos y bucle de decisión
 ├── atlas.py         Atlas: fichas, calibración por país y barridos cancelables
 ├── city.py          City: mapa, reglas, protección y sorteo
 ├── assets/          mapa, fichas de cocina y calibración
@@ -200,9 +225,10 @@ python3 -m unittest discover -s tests -t .
 node --test tests/test_web.mjs
 ```
 
-Cubren el semáforo y el reparto de tickets, las fichas y la calibración del Atlas, las reglas de
-City (también con conductores que eligen mal y viajes sorteados), la API con un modelo falso
-(streaming, cancelación, errores del modelo) y la proyección y los colores del mapa.
+Cubren el semáforo y el reparto de tickets, el catálogo y el bucle de la Ruta (prerrequisitos,
+final garantizado y respuestas fuera de los candidatos), las fichas y la calibración del Atlas, las
+reglas de City (también con conductores que eligen mal y viajes sorteados), la API con un modelo
+falso (streaming, cancelación, errores del modelo) y la proyección y los colores del mapa.
 
 ## Créditos
 
@@ -210,6 +236,7 @@ City (también con conductores que eligen mal y viajes sorteados), la API con un
   pesos no se incluyen: se descargan de Hugging Face.
 - **Mapa** de [Natural Earth](https://www.naturalearthdata.com/), dominio público.
 - **Tipografía** [Nunito](https://github.com/googlefonts/nunito), SIL Open Font License 1.1.
-- **Fichas de cocina y tickets** redactados con Claude: simplifican y son ficticios. Detalle en
-  [assets/README.md](assets/README.md).
+- **Fichas de cocina, tickets y cursos** redactados con Claude: simplifican y son ficticios. Las
+  fichas, detalladas en [assets/README.md](assets/README.md); los tickets y el catálogo de cursos
+  viven en `tickets.py` y `courses.py`.
 - **Código** bajo licencia [MIT](LICENSE).
