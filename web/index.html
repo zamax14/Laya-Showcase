@@ -10,7 +10,8 @@
     main { max-width: 1120px; margin: 0 auto; padding: clamp(16px, 4vw, 48px) clamp(16px, 3vw, 32px) 48px; }
     .topbar { max-width: 1120px; margin: 0 auto; }
     h1 { font-size: clamp(40px, 7vw, 76px); letter-spacing: -0.04em; margin-bottom: clamp(28px, 5vw, 48px); }
-    .demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(16px, 3vw, 28px); }
+    .demos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 3vw, 28px); }
+    @media (max-width: 700px) { .demos { grid-template-columns: 1fr; } }
     .demo { display: flex; flex-direction: column; gap: 16px; color: var(--ink); text-decoration: none; }
     .demo svg { display: block; width: 100%; height: auto; border-radius: var(--radius-play);
       box-shadow: 0 6px 0 rgb(37 40 61 / .08); transition: transform .18s ease, box-shadow .18s ease; }
@@ -78,6 +79,25 @@
           <circle cx="322" cy="142" r="15" fill="#2fbf94"/>
         </svg>
         <div class="row"><h2>Mesa de ayuda</h2><span class="btn primary">Jugar</span></div>
+      </a>
+      <a class="demo" href="/courses">
+        <svg viewBox="0 0 400 220" aria-hidden="true">
+          <rect width="400" height="220" fill="#efeafd"/>
+          <path d="M60,170 C120,170 120,110 180,110 C240,110 240,60 330,60" fill="none" stroke="#cfc1f9" stroke-width="10" stroke-linecap="round" stroke-dasharray="1 20"/>
+          <g>
+            <rect x="30" y="140" width="62" height="62" rx="18" fill="#3ddba8"/><rect x="44" y="160" width="34" height="8" rx="4" fill="#fff"/><rect x="44" y="176" width="22" height="8" rx="4" fill="#fff" opacity=".7"/>
+            <rect x="150" y="80" width="62" height="62" rx="18" fill="#4fa8f0"/><rect x="164" y="100" width="34" height="8" rx="4" fill="#fff"/><rect x="164" y="116" width="22" height="8" rx="4" fill="#fff" opacity=".7"/>
+            <rect x="268" y="30" width="62" height="62" rx="18" fill="#7757e4"/><rect x="282" y="50" width="34" height="8" rx="4" fill="#fff"/><rect x="282" y="66" width="22" height="8" rx="4" fill="#fff" opacity=".7"/>
+          </g>
+          <g transform="translate(348 120)">
+            <circle r="30" fill="#ffc53d"/>
+            <path d="M-12,2 l8,9 l17,-19" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <g fill="#25283d" opacity=".25">
+            <circle cx="61" cy="130" r="5"/><circle cx="181" cy="70" r="5"/><circle cx="299" cy="20" r="5"/>
+          </g>
+        </svg>
+        <div class="row"><h2>Ruta</h2><span class="btn primary">Jugar</span></div>
       </a>
     </section>
   </main>

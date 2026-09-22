@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ruta de aprendizaje · Laya Showcase</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%236c4ee3'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root { --basico: #3ddba8; --intermedio: #4fa8f0; --avanzado: #7757e4; }
+    main { padding: 0 clamp(16px, 3vw, 32px) 40px; }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin: 4px 0 18px; }
+    .head h1 { font-size: clamp(26px, 3.4vw, 40px); }
+    .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .pick { display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 999px;
+      background: var(--card); box-shadow: inset 0 0 0 2px var(--line); font-weight: 800; color: var(--muted); }
+    .pick select { border: 0; background: none; font: inherit; font-weight: 800; color: var(--ink); padding: 6px 4px; cursor: pointer; }
+
+    .top { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 18px; align-items: start; }
+
+    /* Estudiante: quién es, qué sabe y cuánto le falta para el objetivo. */
+    .who { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; flex: none;
+      background: var(--violet); color: #fff; font-weight: 1000; font-size: 21px; }
+    .who b { display: block; font-size: 19px; }
+    .who small { color: var(--muted); font-weight: 700; }
+    .meter { margin: 16px 0 6px; height: 12px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+    .meter i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--violet); transition: width .5s ease; }
+    .meter-line { display: flex; justify-content: space-between; font-weight: 800; font-size: 13px; color: var(--muted); }
+    .student h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+      background: var(--bg); font-weight: 800; font-size: 13px; color: var(--ink-2); }
+    .chip.own { background: var(--violet-soft); color: var(--violet-deep); }
+    .chip.own::before { content: "✓"; font-weight: 1000; }
+    .chip.new { animation: pop .4s ease; }
+    .chip.gap { background: #fff0ee; color: var(--coral-text); }
+    .chip.small { padding: 4px 10px; font-size: 12px; }
+    .chip.win { background: var(--violet); color: #fff; }
+    .totals { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .total { flex: 1 1 90px; padding: 10px 12px; border-radius: 14px; background: var(--bg); }
+    .total b { display: block; font-size: 22px; font-weight: 1000; letter-spacing: -.02em; }
+    .total small { color: var(--muted); font-weight: 700; }
+    @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+
+    /* Escenario: los cuatro pasos del bucle de decisión. */
+    .stage { min-height: 520px; }
+    .stage .who-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .stage .who-line .mode { font-weight: 800; color: var(--muted); font-size: 13px; }
+    .turnpill { display: inline-block; font-size: 12px; font-weight: 900; color: var(--violet-deep);
+      background: var(--violet-soft); padding: 4px 10px; border-radius: 999px; }
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .step { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 14px; border-radius: 16px;
+      box-shadow: inset 0 0 0 2px var(--line); transition: opacity .25s ease, box-shadow .25s ease; }
+    .step.pending { opacity: .3; }
+    .step.active { box-shadow: inset 0 0 0 2px var(--violet); }
+    .step .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--violet-soft); color: var(--violet-deep); font-weight: 900; }
+    .step h4 { margin: 3px 0 10px; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+    .step h4 b { color: var(--muted); font-size: 13px; font-weight: 800; }
+    .state-list { display: grid; gap: 8px; max-height: 300px; overflow: auto; }
+    .state-list > div { display: grid; grid-template-columns: 132px 1fr; gap: 8px; align-items: start; }
+    .state-list code { font-size: 12px; font-weight: 900; color: var(--violet-deep); overflow-wrap: anywhere; }
+    .bars { display: grid; gap: 6px; }
+    .bar-row { display: grid; grid-template-columns: 1fr 44px; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+    .bar-row.win { color: var(--violet-deep); font-weight: 900; }
+    .bar-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-row .track { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: -2px; }
+    .bar-row .track i { display: block; height: 100%; width: 0; border-radius: 4px; background: #cfc1f9; transition: width .45s ease; }
+    .bar-row.win .track i { background: var(--violet); }
+    .pickcard { display: flex; gap: 12px; align-items: flex-start; }
+    .pickcard .level { width: 48px; height: 48px; border-radius: 14px; flex: none; display: grid; place-items: center;
+      color: #fff; font-weight: 1000; font-size: 15px; }
+    .pickcard b { display: block; font-size: 16px; line-height: 1.2; }
+    .pickcard small { color: var(--muted); font-weight: 700; }
+    .pickcard .why { margin-top: 6px; }
+    .conf { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+    .conf .pct { font-size: 30px; font-weight: 1000; letter-spacing: -.03em; }
+    .conf small { color: var(--muted); font-weight: 700; }
+    .idle { display: grid; place-items: center; min-height: 470px; text-align: center; }
+    .idle h3 { font-size: 26px; margin-bottom: 6px; }
+    .idle p { color: var(--muted); font-weight: 700; }
+    .idle .chips { justify-content: center; margin-top: 14px; max-width: 420px; }
+
+    /* Ruta: los cursos elegidos, en orden. */
+    .route { margin-top: 18px; }
+    .route h2 { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: baseline; }
+    .track-row { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; }
+    .stop { flex: none; width: 210px; padding: 12px 14px; border-radius: 16px; background: var(--bg); position: relative; animation: pop .4s ease; }
+    .stop + .stop::before { content: ""; position: absolute; left: -10px; top: 50%; width: 10px; height: 3px; background: var(--line); }
+    .stop .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+      background: var(--violet); color: #fff; font-weight: 900; font-size: 13px; }
+    .stop b { display: block; margin: 8px 0 4px; line-height: 1.2; }
+    .stop small { display: block; color: var(--muted); font-weight: 700; }
+    .stop .tag { display: inline-block; margin-top: 8px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .stop .tag.ok { background: var(--violet-soft); color: var(--violet-deep); }
+    .stop .tag.no { background: #fff0ee; color: var(--coral-text); }
+    .empty { color: var(--muted); font-weight: 700; padding: 20px 4px; }
+
+    @media (max-width: 980px) {
+      .top { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .stage { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><b>Laya Showcase</b><span>Ruta</span></a>
+    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando Laya…</span></p>
+  </header>
+  <main>
+    <div class="head">
+      <h1>Ruta de aprendizaje</h1>
+      <div class="tools">
+        <span class="speed" id="speed" aria-live="polite" hidden></span>
+        <label class="pick">Objetivo <select id="goal"></select></label>
+        <label class="pick">Estudiante <select id="profile"></select></label>
+        <span id="mode"></span>
+        <button class="btn primary" id="build" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Construir ruta</button>
+        <button class="btn" id="reset" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>Reiniciar</button>
+      </div>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="top">
+      <section class="panel student" id="student" aria-label="Estudiante"></section>
+      <section class="panel stage" id="stage" aria-live="polite"></section>
+    </div>
+    <section class="panel route" aria-label="Ruta">
+      <h2>Ruta <span class="muted" id="route-note"></span></h2>
+      <div class="track-row" id="track"></div>
+    </section>
+  </main>
+  <script type="module" src="courses.js"></script>
+</body>
+</html>
