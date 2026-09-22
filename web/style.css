@@ -66,14 +66,13 @@ button, input { font: inherit; color: inherit; }
 .brand b { font-size: 22px; font-weight: 1000; letter-spacing: -0.03em; }
 .brand span { font-size: 22px; font-weight: 600; color: var(--muted); }
 
-/* Solo aparece mientras Laya carga o si falla: lista, no hace falta decirlo. */
+/* Estado de Laya: mientras carga, si falla y, ya lista, dónde corre (GPU o CPU). */
 .model {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 14px 6px 10px; border-radius: 999px;
   background: var(--card); border: 2px solid var(--line);
   font-size: 13px; font-weight: 700; color: var(--ink-2); white-space: nowrap;
 }
-.model[data-state="ready"] { visibility: hidden; }
 .model i { width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
 .model[data-state="loading"] i, .model[data-state="idle"] i { animation: breathe 1.2s ease-in-out infinite; }
 .model[data-state="ready"] i { background: var(--mint); }

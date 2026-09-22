@@ -7,7 +7,8 @@ export function watchModel(element) {
     try {
       const status = await (await fetch("/api/status")).json();
       element.dataset.state = status.model;
-      label.textContent = LABELS[status.model] ?? status.model;
+      label.textContent = status.model === "ready" && status.device ? `Laya en ${status.device === "cuda" ? "GPU" : "CPU"}`
+                                                                    : LABELS[status.model] ?? status.model;
       element.title = status.error ?? "";
       if (status.model === "ready" || status.model === "error") return;
     } catch {
