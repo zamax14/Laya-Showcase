@@ -7,6 +7,20 @@ carga en CPU de ~14 s a ~1,4 s y da exactamente los mismos pesos y logits.
 import os
 import threading
 
+# torch 2.14 envía algunas operaciones de GPU a kernels de Triton que compilan C y necesitan Python.h
+# (paquete python3-dev). Con este interruptor oficial usa las operaciones normales de torch.
+# torch lo lee al importarse: este módulo debe importarse antes que torch (server.py ya lo hace así).
+os.environ.setdefault("TORCH_DISABLE_NATIVE_JIT", "1")
+
+
+def pick_device(requested="auto"):
+    import torch
+    if requested == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if requested == "cuda" and not torch.cuda.is_available():
+        raise ValueError("Pediste --device cuda, pero torch no ve ninguna GPU (¿instalaste requirements-gpu.txt?)")
+    return requested
+
 
 def load_agent(subfolder="multilingual", device="cpu"):
     os.environ.setdefault("USE_TF", "0")
@@ -23,9 +37,9 @@ def load_agent(subfolder="multilingual", device="cpu"):
 class SharedModel:
     """Una instancia de Laya para todas las demos; cada uso del modelo va en serie."""
 
-    def __init__(self, max_len=2048, head_max_len=512):
-        self.max_len, self.head_max_len = max_len, head_max_len
-        self.agent, self.status, self.error = None, "idle", None
+    def __init__(self, max_len=2048, head_max_len=512, device="auto"):
+        self.max_len, self.head_max_len, self.requested = max_len, head_max_len, device
+        self.agent, self.status, self.error, self.device = None, "idle", None, None
         self.lock = threading.Lock()
 
     def load(self):
@@ -34,13 +48,14 @@ class SharedModel:
                 self.status = "loading"
                 try:
                     # Sin tope de hilos: torch usa los núcleos físicos (medido: 4 hilos era un 35 % más lento).
-                    agent = load_agent()
+                    device = pick_device(self.requested)
+                    agent = load_agent(device=device)
                 except Exception as exc:
                     self.status, self.error = "error", f"{type(exc).__name__}: {exc}"
                     raise
                 # max_len solo es un tope: el relleno es dinámico, no encarece estados cortos.
                 agent.cfg["max_len"], agent.cfg["head_max_len"] = self.max_len, self.head_max_len
-                self.agent, self.status = agent, "ready"
+                self.agent, self.status, self.device = agent, "ready", device
         return self.agent
 
     def tokens(self, text):

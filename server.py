@@ -40,7 +40,8 @@ class App:
         self.trip, self.trip_lock = Trip(), threading.Lock()
 
     def status(self):
-        return {"model": getattr(self.model, "status", "ready"), "error": getattr(self.model, "error", None)}
+        return {"model": getattr(self.model, "status", "ready"), "error": getattr(self.model, "error", None),
+                "device": getattr(self.model, "device", None)}
 
     def step(self):
         with self.trip_lock:
@@ -195,21 +196,33 @@ def serve(app, port=8000, host="127.0.0.1"):
     return server
 
 
+def warm(app):
+    started = time.monotonic()
+    try:
+        app.atlas.warm()
+    except Exception as exc:  # La página también lo muestra en el indicador del modelo.
+        print(f"Laya no cargó: {type(exc).__name__}: {exc}", flush=True)
+        return
+    print(f"Laya lista en {app.model.device.upper()} en {time.monotonic() - started:.1f} s", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Demos de Laya Showcase con el modelo en local")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true", help="no abrir el navegador")
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto",
+                        help="dónde corre Laya; auto usa la GPU si torch la ve")
     args = parser.parse_args()
     from fastload import SharedModel
-    app = App(SharedModel())
+    app = App(SharedModel(device=args.device))
     try:
         server = serve(app, args.port)
     except OSError as exc:
         raise SystemExit(f"No se pudo abrir el puerto {args.port} ({exc.strerror}); prueba con --port 8001")
     url = f"http://127.0.0.1:{server.server_address[1]}"
-    print(f"Laya Showcase en {url} (Ctrl+C para salir)")
+    print(f"Laya Showcase en {url} (Ctrl+C para salir)", flush=True)
     # El modelo se carga mientras se abre la página.
-    threading.Thread(target=app.atlas.warm, daemon=True).start()
+    threading.Thread(target=warm, args=(app,), daemon=True).start()
     if not args.no_browser:
         webbrowser.open(url)
     try:
