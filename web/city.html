@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>City · Laya Showcase</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%236c4ee3'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    main { padding: 0 clamp(16px, 3vw, 32px) 32px; }
+    .mission { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 4px 0 14px; }
+    .mission h1 { font-size: clamp(26px, 3.4vw, 40px); }
+    .mission h1.done { color: var(--violet-deep); }
+    .turn { font-weight: 800; color: var(--muted); white-space: nowrap; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+    .play { border-radius: var(--radius-play); overflow: hidden; background: var(--ground); }
+    #city { display: block; width: 100%; height: auto; }
+    #car { transition: transform .7s cubic-bezier(.45, 0, .2, 1); }
+    #drive .pause, #drive[data-running="true"] .play { display: none; }
+    #drive[data-running="true"] .pause { display: inline; }
+    #drive .play { fill: currentColor; }
+    /* Alex espera flotando; el hotel late. Una sola animación por marcador. */
+    .float { animation: float 1.8s ease-in-out infinite; }
+    @keyframes float { 50% { transform: translateY(-5px); } }
+    .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 1.8s ease-out infinite; }
+    @keyframes pulse { from { transform: scale(1); opacity: .55; } to { transform: scale(2.1); opacity: 0; } }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
+    .controls .status { flex: 1 1 260px; margin-left: 6px; }
+
+    .side { display: grid; gap: 18px; }
+    .decision .when { color: var(--violet-deep); font-weight: 800; margin: -6px 0 10px; }
+    .actions { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+    .actions li { padding: 6px 10px; border-radius: 12px; }
+    .actions li.winner { background: var(--violet-soft); }
+    .actions .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; }
+    .actions .top b { font-weight: 900; }
+    .actions li.winner .top { color: var(--violet-deep); }
+    .actions .bar { height: 8px; border-radius: 4px; background: var(--line); margin: 4px 0 3px; overflow: hidden; }
+    .actions .bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: #cfc1f9; transition: width .4s ease; }
+    .actions li.winner .bar i { background: var(--violet); }
+    .actions li.blocked { opacity: .45; }
+    .verdict { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: #ffe9e6; color: #8f2a1d; font-weight: 700; }
+
+    .history ol { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow: auto; }
+    .history ol button {
+      width: 100%; display: grid; grid-template-columns: 34px 1fr; gap: 6px; padding: 6px 8px;
+      border: 0; border-radius: 10px; background: none; text-align: left; cursor: pointer; font-weight: 700;
+    }
+    .history ol button span { color: var(--muted); }
+    .history ol button:hover, .history ol button[aria-current="true"] { background: var(--violet-soft); }
+    .history ol button.corrected b { color: var(--coral-text); }
+    .history .btn { margin-top: 10px; width: 100%; }
+
+    dialog { border: 0; border-radius: var(--radius-panel); padding: 0; width: min(760px, calc(100vw - 32px)); max-height: 85vh; color: var(--ink); }
+    dialog::backdrop { background: rgb(37 40 61 / .45); }
+    dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 2px solid var(--line); }
+    dialog h2 { font-size: 19px; }
+    dialog pre { margin: 0; padding: 18px 20px; overflow: auto; max-height: calc(85vh - 80px); font: 13px/1.5 ui-monospace, "Cascadia Code", Menlo, monospace; }
+
+    @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .controls .btn { flex: 1 1 40%; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><b>Laya Showcase</b><span>City</span></a>
+    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando Laya…</span></p>
+  </header>
+  <main>
+    <div class="mission">
+      <h1 id="mission">Recoge a Alex</h1>
+      <span class="turn" id="turn">Turno 0</span>
+    </div>
+    <div class="layout">
+      <section>
+        <div class="controls">
+          <button class="btn primary" id="drive" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="play" d="M8 5l11 7-11 7z"/><path class="pause" d="M8 5v14M16 5v14"/></svg><span>Conducir</span></button>
+          <button class="btn" id="step" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l9 7-9 7z"/><path d="M18 5v14"/></svg>Paso</button>
+          <button class="btn" id="reset" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>Reiniciar</button>
+          <button class="btn" id="shuffle" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r=".6"/><circle cx="15" cy="15" r=".6"/><circle cx="15" cy="9" r=".6"/><circle cx="9" cy="15" r=".6"/></svg>Sortear</button>
+          <button class="btn" id="inspect" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H7a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h2M15 4h2a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-2"/></svg>Estado</button>
+          <p class="status" id="status" aria-live="polite"></p>
+        </div>
+        <div class="play">
+          <svg id="city" viewBox="0 0 970 640" role="img" aria-label="Ciudad con el taxi, la ruta, los semáforos y las señales de STOP"></svg>
+        </div>
+      </section>
+      <aside class="side">
+        <section class="panel decision">
+          <h2>Decisión de Laya</h2>
+          <p class="when" id="when" hidden></p>
+          <ol class="actions" id="actions"></ol>
+          <p class="verdict" id="verdict" hidden></p>
+        </section>
+        <section class="panel history" id="history-panel" hidden>
+          <h2>Historial</h2>
+          <ol id="history"></ol>
+          <button class="btn" id="latest" type="button" hidden>Volver al actual</button>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <dialog id="state-dialog" aria-labelledby="state-title">
+    <header>
+      <h2 id="state-title">Estado</h2>
+      <button class="btn" id="close-dialog" type="button">Cerrar</button>
+    </header>
+    <pre id="state-json"></pre>
+  </dialog>
+  <script type="module" src="city.js"></script>
+</body>
+</html>

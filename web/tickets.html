@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mesa de ayuda · Laya Showcase</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%236c4ee3'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root { --verde: #2fbf94; --amarillo: #ffc53d; --rojo: #d8344a; }
+    main { padding: 0 clamp(16px, 3vw, 32px) 40px; }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin: 4px 0 18px; }
+    .head h1 { font-size: clamp(26px, 3.4vw, 40px); }
+    .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .counters { display: flex; flex-wrap: wrap; gap: 8px; margin-right: 6px; }
+    .counter { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px;
+      background: var(--card); box-shadow: inset 0 0 0 2px var(--line); font-weight: 800; }
+    .counter small { color: var(--muted); font-weight: 700; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--line); }
+    .dot[data-color="verde"] { background: var(--verde); }
+    .dot[data-color="amarillo"] { background: var(--amarillo); }
+    .dot[data-color="rojo"] { background: var(--rojo); }
+
+    .top { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; align-items: start; }
+    .queue h2, .board h2 { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: baseline; }
+    .queue h2 span { color: var(--muted); font-size: 15px; }
+    .queue ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 560px; overflow: auto; }
+    .queue li { padding: 10px 12px; border-radius: 14px; background: var(--bg); transition: opacity .3s ease, transform .3s ease; }
+    .queue li.leaving { opacity: 0; transform: translateX(24px); }
+    .queue li p { font-weight: 800; line-height: 1.25; }
+    .queue li small { color: var(--muted); font-weight: 600; }
+    .queue .empty { background: none; color: var(--muted); font-weight: 700; text-align: center; padding: 30px 10px; }
+    .tid { display: inline-block; font-size: 12px; font-weight: 900; color: var(--violet-deep); background: var(--violet-soft);
+      padding: 2px 8px; border-radius: 999px; margin-bottom: 4px; }
+
+    /* Escenario: el ticket que Laya está leyendo, paso a paso. */
+    .stage { min-height: 560px; }
+    .stage .who-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .stage .who-line .mode { font-weight: 800; color: var(--muted); font-size: 13px; }
+    .ticket-card { margin: 12px 0 18px; padding: 16px 18px; border-radius: 18px; background: var(--bg); }
+    .ticket-card h3 { font-size: 22px; margin: 4px 0 6px; }
+    .ticket-card p { color: var(--ink-2); }
+    .ticket-card small { display: block; margin-top: 8px; color: var(--muted); font-weight: 700; }
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .step { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 14px; border-radius: 16px;
+      box-shadow: inset 0 0 0 2px var(--line); transition: opacity .25s ease, box-shadow .25s ease; }
+    .step.pending { opacity: .3; }
+    .step.active { box-shadow: inset 0 0 0 2px var(--violet); }
+    .step .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--violet-soft); color: var(--violet-deep); font-weight: 900; }
+    .step h4 { margin: 3px 0 10px; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+    .step h4 b { color: var(--muted); font-size: 13px; }
+    .bars { display: grid; gap: 6px; }
+    .bar-row { display: grid; grid-template-columns: 1fr 44px; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+    .bar-row.win { color: var(--violet-deep); font-weight: 900; }
+    .bar-row .track { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: -2px; }
+    .bar-row .track i { display: block; height: 100%; width: 0; border-radius: 4px; background: #cfc1f9; transition: width .45s ease; }
+    .bar-row.win .track i { background: var(--violet); }
+    .scale { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .scale span { padding: 10px 4px; border-radius: 12px; text-align: center; font-size: 13px; font-weight: 800;
+      background: var(--bg); color: var(--muted); transition: background .3s ease, color .3s ease; }
+    .scale span.on { background: var(--violet-soft); color: var(--violet-deep); }
+    .scale span.win { background: var(--violet); color: #fff; }
+    .expert { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none;
+      color: #fff; font-weight: 900; font-size: 15px; }
+    .avatar.small { width: 26px; height: 26px; font-size: 11px; }
+    .expert b { display: block; font-size: 16px; }
+    .expert small { color: var(--muted); font-weight: 700; }
+    .verdict { display: flex; align-items: center; gap: 16px; }
+    .verdict .pct { font-size: 40px; font-weight: 1000; letter-spacing: -0.03em; line-height: 1; }
+    .verdict p { font-weight: 800; color: var(--ink-2); margin-top: 4px; }
+    /* Semáforo de juguete: tres luces, solo una encendida. */
+    .light { display: grid; gap: 5px; padding: 7px; border-radius: 16px; background: var(--ink); flex: none; }
+    .light i { width: 20px; height: 20px; border-radius: 50%; background: #3a3e56; transition: background .3s ease, box-shadow .3s ease; }
+    .light[data-color="rojo"] .r { background: var(--rojo); box-shadow: 0 0 12px var(--rojo); }
+    .light[data-color="amarillo"] .y { background: var(--amarillo); box-shadow: 0 0 12px var(--amarillo); }
+    .light[data-color="verde"] .g { background: var(--verde); box-shadow: 0 0 12px var(--verde); }
+    .legend { display: grid; gap: 12px; margin-top: 14px; }
+    .legend > div { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 16px; background: var(--bg); text-align: left; }
+    .legend b { display: block; }
+    .legend small { color: var(--muted); font-weight: 700; }
+    .idle { display: grid; place-items: center; min-height: 480px; text-align: center; }
+    .idle h3 { font-size: 26px; margin-bottom: 4px; }
+    .idle p { color: var(--muted); font-weight: 700; }
+
+    .board { margin-top: 18px; }
+    .tabs { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--bg); gap: 2px; }
+    .tabs button { border: 0; padding: 8px 14px; border-radius: 999px; background: none; font-weight: 800; color: var(--muted); cursor: pointer; }
+    .tabs button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+    .columns { display: grid; grid-template-columns: repeat(var(--cols), minmax(180px, 1fr)); gap: 12px; margin-top: 14px; overflow-x: auto; }
+    .column { background: var(--bg); border-radius: 16px; padding: 10px; min-height: 120px; }
+    .column header { display: flex; align-items: center; gap: 8px; font-weight: 900; margin: 2px 4px 10px; }
+    .column header small { margin-left: auto; color: var(--muted); }
+    .column .swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+    .card { display: block; width: 100%; text-align: left; border: 0; cursor: pointer; margin-bottom: 8px; padding: 10px 12px;
+      border-radius: 14px; background: var(--card); box-shadow: 0 3px 0 var(--line); }
+    .card.new { animation: pop .35s ease; }
+    .card:hover, .card[aria-current="true"] { box-shadow: 0 3px 0 var(--line), inset 0 0 0 2px var(--violet); }
+    .card .row { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 900; }
+    .card .row b { margin-left: auto; }
+    .card p { font-weight: 800; line-height: 1.25; margin: 4px 0 8px; }
+    .card .mini { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    @keyframes pop { from { transform: scale(.9); opacity: 0; } }
+
+    @media (max-width: 980px) {
+      .top { grid-template-columns: 1fr; }
+      .queue ol { max-height: 260px; }
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><b>Laya Showcase</b><span>Mesa de ayuda</span></a>
+    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando Laya…</span></p>
+  </header>
+  <main>
+    <div class="head">
+      <h1>Tickets de TI</h1>
+      <div class="tools">
+        <div class="counters" aria-label="Resumen">
+          <span class="counter"><span id="pending-count">20</span> <small>sin asignar</small></span>
+          <span class="counter"><span class="dot" data-color="verde"></span><span id="count-verde">0</span></span>
+          <span class="counter"><span class="dot" data-color="amarillo"></span><span id="count-amarillo">0</span></span>
+          <span class="counter"><span class="dot" data-color="rojo"></span><span id="count-rojo">0</span></span>
+        </div>
+        <button class="btn primary" id="assign" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Asignar con Laya</button>
+        <button class="btn" id="reset" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>Reiniciar</button>
+      </div>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="top">
+      <section class="panel queue" aria-label="Sin asignar">
+        <h2>Sin asignar <span id="queue-count"></span></h2>
+        <ol id="queue"></ol>
+      </section>
+      <section class="panel stage" id="stage" aria-live="polite"></section>
+    </div>
+    <section class="panel board" aria-label="Asignados">
+      <h2>Asignados
+        <span class="tabs" role="group" aria-label="Agrupar por">
+          <button type="button" data-group="categoria" aria-pressed="true">Categoría</button>
+          <button type="button" data-group="prioridad" aria-pressed="false">Prioridad</button>
+          <button type="button" data-group="experto" aria-pressed="false">Experto</button>
+        </span>
+      </h2>
+      <div class="columns" id="columns"></div>
+    </section>
+  </main>
+  <script type="module" src="tickets.js"></script>
+</body>
+</html>

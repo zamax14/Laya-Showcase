@@ -1,0 +1,114 @@
+@font-face {
+  font-family: "Nunito";
+  src: url("fonts/Nunito.ttf") format("truetype");
+  font-weight: 200 1000;
+  font-display: swap;
+}
+
+:root {
+  --bg: #f3f5f9;
+  --card: #ffffff;
+  --ink: #25283d;
+  --ink-2: #4c5068;
+  --muted: #666b82;
+  --line: #e3e6ee;
+  --violet: #6c4ee3;
+  --violet-deep: #4428ae;
+  --violet-soft: #efeafd;
+  --coral: #ff6b5b;
+  --coral-text: #c8412f;
+  --sun: #ffc53d;
+  --sky: #4fa8f0;
+  --mint: #3ddba8;
+  --stop: #d8344a;
+  --ocean: #64a8da;
+  --land: #ede8de;
+  --ground: #e9e3d6;
+  --radius-play: 28px;
+  --radius-panel: 20px;
+  --press: 0 4px 0;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; } /* Que ningún display de componente lo anule. */
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 15px/1.5 "Nunito", ui-rounded, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.1; font-weight: 900; letter-spacing: -0.02em; }
+p { margin: 0; }
+a { color: var(--violet-deep); font-weight: 700; }
+button, input { font: inherit; color: inherit; }
+
+:focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; border-radius: 10px; }
+
+/* Barra superior compartida: marca a la izquierda, estado del modelo a la derecha. */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 18px clamp(16px, 3vw, 32px);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+/* Marca: el mismo cuadrado violeta del favicon. */
+.brand::before {
+  content: ""; width: 30px; height: 30px; border-radius: 10px; flex: none;
+  background: radial-gradient(circle at 50% 50%, #fff 0 7px, transparent 7.5px), var(--violet);
+  box-shadow: 0 3px 0 var(--violet-deep);
+}
+.brand b { font-size: 22px; font-weight: 1000; letter-spacing: -0.03em; }
+.brand span { font-size: 22px; font-weight: 600; color: var(--muted); }
+
+/* Solo aparece mientras Laya carga o si falla: lista, no hace falta decirlo. */
+.model {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 10px; border-radius: 999px;
+  background: var(--card); border: 2px solid var(--line);
+  font-size: 13px; font-weight: 700; color: var(--ink-2); white-space: nowrap;
+}
+.model[data-state="ready"] { visibility: hidden; }
+.model i { width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
+.model[data-state="loading"] i, .model[data-state="idle"] i { animation: breathe 1.2s ease-in-out infinite; }
+.model[data-state="ready"] i { background: var(--mint); }
+.model[data-state="error"] { border-color: var(--stop); color: var(--coral-text); }
+.model[data-state="error"] i { background: var(--stop); }
+@keyframes breathe { 50% { transform: scale(.55); opacity: .5; } }
+
+/* Botones de juguete: se hunden al pulsarlos. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 0 20px; border: 0; border-radius: 999px;
+  background: var(--card); color: var(--ink);
+  font-weight: 800; font-size: 15px; cursor: pointer; text-decoration: none;
+  box-shadow: inset 0 0 0 2px var(--line), var(--press) var(--line);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 0 0 2px var(--line), 0 1px 0 var(--line); }
+.btn.primary { background: var(--violet); color: #fff; box-shadow: var(--press) var(--violet-deep); }
+.btn.primary:active:not(:disabled) { box-shadow: 0 1px 0 var(--violet-deep); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.panel {
+  background: var(--card); border-radius: var(--radius-panel);
+  border: 2px solid var(--line); padding: 20px;
+}
+.panel h2 { font-size: 17px; margin-bottom: 12px; }
+.muted { color: var(--muted); }
+.status { color: var(--coral-text); font-weight: 700; }
+.status:empty { display: none; } /* Solo aparece para contar un error. */
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
