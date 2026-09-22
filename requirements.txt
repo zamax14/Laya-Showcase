@@ -1,0 +1,6 @@
+# En Linux, torch solo CPU: la rueda por defecto trae ~4 GB de CUDA que estas demos no usan.
+# En macOS y Windows la rueda normal de PyPI ya es de CPU.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.0+cpu; sys_platform == "linux"
+torch==2.14.0; sys_platform != "linux"
+laya==0.3.5
