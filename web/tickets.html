@@ -16,8 +16,6 @@
     .counter { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px;
       background: var(--card); box-shadow: inset 0 0 0 2px var(--line); font-weight: 800; }
     .counter small { color: var(--muted); font-weight: 700; }
-    .counter.speed { background: var(--violet-soft); box-shadow: none; color: var(--violet-deep); }
-    .counter.speed b { font-size: 18px; font-weight: 1000; }
     .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--line); }
     .dot[data-color="verde"] { background: var(--verde); }
     .dot[data-color="amarillo"] { background: var(--amarillo); }
@@ -87,9 +85,6 @@
     .idle p { color: var(--muted); font-weight: 700; }
 
     .board { margin-top: 18px; }
-    .tabs { display: inline-flex; padding: 4px; border-radius: 999px; background: var(--bg); gap: 2px; }
-    .tabs button { border: 0; padding: 8px 14px; border-radius: 999px; background: none; font-weight: 800; color: var(--muted); cursor: pointer; }
-    .tabs button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
     .columns { display: grid; grid-template-columns: repeat(var(--cols), minmax(180px, 1fr)); gap: 12px; margin-top: 14px; overflow-x: auto; }
     .column { background: var(--bg); border-radius: 16px; padding: 10px; min-height: 120px; }
     .column header { display: flex; align-items: center; gap: 8px; font-weight: 900; margin: 2px 4px 10px; }
@@ -121,17 +116,14 @@
     <div class="head">
       <h1>Tickets de TI</h1>
       <div class="tools">
-        <span class="counter speed" id="speed" aria-live="polite" hidden></span>
+        <span class="speed" id="speed" aria-live="polite" hidden></span>
         <div class="counters" aria-label="Resumen">
           <span class="counter"><span id="pending-count">20</span> <small>sin asignar</small></span>
           <span class="counter"><span class="dot" data-color="verde"></span><span id="count-verde">0</span></span>
           <span class="counter"><span class="dot" data-color="amarillo"></span><span id="count-amarillo">0</span></span>
           <span class="counter"><span class="dot" data-color="rojo"></span><span id="count-rojo">0</span></span>
         </div>
-        <span class="tabs" id="mode" role="group" aria-label="Velocidad">
-          <button type="button" data-mode="real" aria-pressed="true">Tiempo real</button>
-          <button type="button" data-mode="pasos" aria-pressed="false">Paso a paso</button>
-        </span>
+        <span id="mode"></span>
         <button class="btn primary" id="assign" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Asignar con Laya</button>
         <button class="btn" id="reset" type="button">

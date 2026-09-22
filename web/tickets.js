@@ -1,4 +1,4 @@
-import { $, watchModel } from "./common.js";
+import { $, modeToggle, showSpeed, watchModel } from "./common.js";
 
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const STEP = REDUCED ? 40 : 330;  // ms por paso: el servidor decide en ~0,35 s, la página lo cuenta despacio.
@@ -6,7 +6,6 @@ const HOLD = REDUCED ? 80 : 520;
 const CAT_COLORS = { hardware: "#7c8aa5", software: "#9b87f0", redes: "#4fa8f0", accesos: "#2bb3bd", correo: "#e88bb3", seguridad: "#25283d" };
 const PRIO_COLORS = { baja: "#cfc1f9", media: "#a48cf1", alta: "#7757e4", critica: "#4428ae" };
 const RANGES = { verde: "Más de 80 %", amarillo: "Entre 60 y 80 %", rojo: "Menos de 60 %" };
-const seconds = new Intl.NumberFormat("es", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = n => `${Math.round(n)} %`;
 const ms = s => `${Math.round(s * 1000)} ms`;
 const frame = () => new Promise(requestAnimationFrame);
@@ -17,8 +16,8 @@ const desk = await (await fetch("/api/tickets")).json();
 const byId = Object.fromEntries(desk.tickets.map(t => [t.id, t]));
 let assigned = { ...desk.asignados };
 let group = "categoria", source = null, queue = [], playing = false, current = null, selected = null;
-// «real»: cada ticket se pinta en cuanto Laya lo decide. «pasos»: despacio, para explicar cada paso.
-let mode = "real", run = null;
+let run = null;  // Tanda en curso: suma de inferencia y tickets, para el indicador de velocidad.
+const mode = modeToggle($("#mode"));
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -101,12 +100,7 @@ document.querySelector(".board .tabs").addEventListener("click", event => {
   renderBoard();
 });
 
-$("#mode").addEventListener("click", event => {
-  const button = event.target.closest("button");
-  if (!button) return;
-  mode = button.dataset.mode;
-  for (const tab of $("#mode").querySelectorAll("button")) tab.setAttribute("aria-pressed", String(tab === button));
-});
+
 
 $("#columns").addEventListener("click", event => {
   const target = event.target.closest(".card");
@@ -208,7 +202,7 @@ async function play() {
   updateButtons();
   while (queue.length) {
     const r = queue.shift();
-    const slow = mode === "pasos";
+    const slow = mode() === "pasos";
     if (slow) {
       document.querySelector(`#queue li[data-id="${r.id}"]`)?.classList.add("leaving");
       await sleep(REDUCED ? 0 : 260);
@@ -229,17 +223,11 @@ async function play() {
   }
   playing = false;
   updateButtons();
-  if (!source) showSpeed();
+  if (!source) finished();
 }
 
-// Velocidad real: suma de lo que tardó Laya en cada ticket, medido en el servidor.
-async function showSpeed() {
-  if (!run?.count) return;
-  const status = await (await fetch("/api/status")).json();
-  const where = status.device === "cuda" ? "GPU" : "CPU";
-  $("#speed").replaceChildren(el("b", {}, ms(run.inference / run.count)), " ",
-    el("small", {}, `por ticket en ${where} (${run.count} en ${seconds.format(run.inference)} s)`));
-  $("#speed").hidden = false;
+function finished() {
+  if (run) showSpeed($("#speed"), run.inference, run.count, "ticket");
 }
 
 $("#assign").addEventListener("click", () => {
@@ -272,7 +260,7 @@ function closeStream() {
   source?.close();
   source = null;
   updateButtons();
-  if (!playing) showSpeed();
+  if (!playing) finished();
 }
 
 function updateButtons() {
