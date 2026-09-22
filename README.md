@@ -45,13 +45,23 @@ agent.predict({"ticket": "No conecta la VPN desde casa. Trabajo en remoto y..."}
 
 ## Las demos
 
+Las tres tienen dos modos, y el que elijas se recuerda al cambiar de demo:
+
+- **Real-Time**: cada decisión aparece en cuanto Laya la toma, y al terminar un indicador muestra
+  los milisegundos por decisión y si corrió en GPU o CPU.
+- **Paso a paso**: la misma inferencia, reproducida a ritmo de lectura para seguir cada decisión.
+
+| En Real-Time, RTX 4050 | Tanda completa | Por decisión |
+|---|---|---|
+| Mesa de ayuda: 20 tickets | 0,4 s | 20 ms |
+| Atlas: 176 países | 2,4 s | 13 ms |
+| City: un viaje de 19 decisiones | 3,1 s con el taxi animado | 31 ms |
+
 ### Mesa de ayuda
 
 20 tickets de TI esperan en la cola. **Asignar con Laya** los toma uno a uno: categoría, prioridad,
 el experto responsable y un **semáforo** que dice cuánta atención humana necesita la asignación.
-En **Tiempo real** cada ticket aparece en cuanto Laya lo decide (los 20 en 0,4 s en GPU) y un
-indicador muestra los milisegundos por ticket. **Paso a paso** va más despacio para seguir cada
-decisión, como en el GIF de arriba.
+El GIF de arriba es el modo Paso a paso.
 
 | Semáforo | Confianza | Qué significa | Aciertos medidos |
 |---|---|---|---|
@@ -69,7 +79,8 @@ como debe.
 
 Escribe qué te apetece comer («comida picante», «fácil para vegetarianos») y Laya puntúa la
 cocina de los 176 países del mapa, que se colorea mientras llegan los resultados. Cada país tiene
-una ficha de cocina en español, y al tocarlo ves exactamente el texto que leyó Laya.
+una ficha de cocina en español, y al tocarlo ves exactamente el texto que leyó Laya. En Paso a
+paso el mapa avanza país a país, con el panel siguiendo el país que Laya está leyendo.
 
 <img src="docs/atlas.png" alt="Atlas coloreado para «comida picante», con Indonesia seleccionada" width="880">
 
@@ -77,7 +88,8 @@ una ficha de cocina en español, y al tocarlo ves exactamente el texto que leyó
 
 Laya conduce un taxi por una ciudad con calles de un sentido, semáforos y STOP. En cada turno
 reparte probabilidad entre siete acciones y la ciudad corrige lo que viole las reglas, y lo dice.
-**Sortear** cambia de sitio el taxi, al pasajero y el destino.
+**Sortear** cambia de sitio el taxi, al pasajero y el destino. En Real-Time el taxi recorre cada
+calle en 120 ms; en Paso a paso, en 700 ms y con una pausa para leer cada turno.
 
 <img src="docs/city.png" alt="City: el taxi de camino a recoger a Alex, con las probabilidades de cada acción" width="880">
 
@@ -117,8 +129,7 @@ lo indica. Medido en una RTX 4050 de portátil frente a su propia CPU, con el mi
 En GPU Laya calcula en bf16, y aun así las decisiones son las mismas. Los 20 tickets reciben la
 misma categoría, prioridad y semáforo, con 1,4 puntos de confianza de diferencia como mucho. El
 Atlas da el mismo top 10 en cinco consultas y City toma las mismas 19 decisiones. Usa 1,5 GB de
-memoria de vídeo. En la página, la Mesa de ayuda en Tiempo real deja los 20 tickets asignados en
-0,42 s, y el Atlas colorea el mapa en menos de 2 s.
+memoria de vídeo.
 
 ## Cómo está hecho
 
