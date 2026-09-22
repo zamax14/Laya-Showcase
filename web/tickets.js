@@ -8,6 +8,8 @@ const PRIO_COLORS = { baja: "#cfc1f9", media: "#a48cf1", alta: "#7757e4", critic
 const RANGES = { verde: "Más de 80 %", amarillo: "Entre 60 y 80 %", rojo: "Menos de 60 %" };
 const seconds = new Intl.NumberFormat("es", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = n => `${Math.round(n)} %`;
+const ms = s => `${Math.round(s * 1000)} ms`;
+const frame = () => new Promise(requestAnimationFrame);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 watchModel($("#model"));
@@ -15,6 +17,8 @@ const desk = await (await fetch("/api/tickets")).json();
 const byId = Object.fromEntries(desk.tickets.map(t => [t.id, t]));
 let assigned = { ...desk.asignados };
 let group = "categoria", source = null, queue = [], playing = false, current = null, selected = null;
+// «real»: cada ticket se pinta en cuanto Laya lo decide. «pasos»: despacio, para explicar cada paso.
+let mode = "real", run = null;
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -89,19 +93,26 @@ function card(r, isNew) {
     el("div", { class: "mini" }, avatar(r.experto, true), desk.expertos[r.experto].nombre));
 }
 
-document.querySelector(".tabs").addEventListener("click", event => {
+document.querySelector(".board .tabs").addEventListener("click", event => {
   const button = event.target.closest("button");
   if (!button) return;
   group = button.dataset.group;
-  for (const tab of document.querySelectorAll(".tabs button")) tab.setAttribute("aria-pressed", String(tab === button));
+  for (const tab of document.querySelectorAll(".board .tabs button")) tab.setAttribute("aria-pressed", String(tab === button));
   renderBoard();
+});
+
+$("#mode").addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  mode = button.dataset.mode;
+  for (const tab of $("#mode").querySelectorAll("button")) tab.setAttribute("aria-pressed", String(tab === button));
 });
 
 $("#columns").addEventListener("click", event => {
   const target = event.target.closest(".card");
   if (!target || playing) return;
   selected = target.dataset.id;
-  showResult(byId[selected], assigned[selected], false);
+  showResult(byId[selected], assigned[selected], { label: "Revisión" });
   renderBoard();
 });
 
@@ -166,7 +177,7 @@ function verdictBlock(r) {
   return el("div", { class: "verdict" }, light, el("div", {}, el("span", { class: "pct" }, pct(r.confianza)), el("p", {}, r.atencion)));
 }
 
-async function showResult(t, r, animate) {
+async function showResult(t, r, { animate = false, label } = {}) {
   const steps = [
     step(1, "Categoría", `confianza ${pct(r.categoria.confidence)}`, categoryBars(r)),
     step(2, "Prioridad", null, priorityScale(r)),
@@ -175,7 +186,7 @@ async function showResult(t, r, animate) {
   ];
   $("#stage").replaceChildren(
     el("div", { class: "who-line" }, el("span", { class: "tid" }, t.id),
-      el("span", { class: "mode" }, animate ? `Laya decidió en ${seconds.format(r.segundos)} s` : "Revisión")),
+      el("span", { class: "mode" }, label ?? `Laya decidió en ${ms(r.segundos)}`)),
     el("div", { class: "ticket-card" }, el("h3", {}, t.titulo), el("p", {}, t.descripcion), el("small", {}, `${t.solicitante}, ${t.area}`)),
     el("ol", { class: "steps" }, ...steps));
   if (!animate) return steps.forEach(reveal);
@@ -197,12 +208,18 @@ async function play() {
   updateButtons();
   while (queue.length) {
     const r = queue.shift();
-    document.querySelector(`#queue li[data-id="${r.id}"]`)?.classList.add("leaving");
-    await sleep(REDUCED ? 0 : 260);
+    const slow = mode === "pasos";
+    if (slow) {
+      document.querySelector(`#queue li[data-id="${r.id}"]`)?.classList.add("leaving");
+      await sleep(REDUCED ? 0 : 260);
+    }
     current = r.id;
     renderQueue();
-    await showResult(byId[r.id], r, true);
-    await sleep(HOLD);
+    await showResult(byId[r.id], r, { animate: slow });
+    if (slow) await sleep(HOLD);
+    else await frame();  // Un fotograma por ticket: se ve pasar cada uno sin frenar a Laya.
+    run.inference += r.segundos;
+    run.count += 1;
     assigned[r.id] = r;
     current = null;
     selected = null;
@@ -212,12 +229,25 @@ async function play() {
   }
   playing = false;
   updateButtons();
+  if (!source) showSpeed();
+}
+
+// Velocidad real: suma de lo que tardó Laya en cada ticket, medido en el servidor.
+async function showSpeed() {
+  if (!run?.count) return;
+  const status = await (await fetch("/api/status")).json();
+  const where = status.device === "cuda" ? "GPU" : "CPU";
+  $("#speed").replaceChildren(el("b", {}, ms(run.inference / run.count)), " ",
+    el("small", {}, `por ticket en ${where} (${run.count} en ${seconds.format(run.inference)} s)`));
+  $("#speed").hidden = false;
 }
 
 $("#assign").addEventListener("click", () => {
   if (source || !pending().length) return;
   setStatus("");
   showIdle("Laya empieza a leer…");
+  run = { inference: 0, count: 0 };
+  $("#speed").hidden = true;
   source = new EventSource("/api/tickets/assign");
   updateButtons();
   source.addEventListener("ticket", event => { queue.push(JSON.parse(event.data)); play(); });
@@ -232,6 +262,7 @@ $("#reset").addEventListener("click", async () => {
   if (!response.ok) return setStatus(data.error);
   assigned = { ...data.asignados };
   selected = null;
+  $("#speed").hidden = true;
   setStatus("");
   renderAll();
   showIdle();
@@ -241,6 +272,7 @@ function closeStream() {
   source?.close();
   source = null;
   updateButtons();
+  if (!playing) showSpeed();
 }
 
 function updateButtons() {
