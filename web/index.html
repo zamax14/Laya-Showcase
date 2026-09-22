@@ -10,8 +10,7 @@
     main { max-width: 1120px; margin: 0 auto; padding: clamp(16px, 4vw, 48px) clamp(16px, 3vw, 32px) 48px; }
     .topbar { max-width: 1120px; margin: 0 auto; }
     h1 { font-size: clamp(40px, 7vw, 76px); letter-spacing: -0.04em; margin-bottom: clamp(28px, 5vw, 48px); }
-    .demos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 3vw, 28px); }
-    @media (max-width: 700px) { .demos { grid-template-columns: 1fr; } }
+    .demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(16px, 3vw, 28px); }
     .demo { display: flex; flex-direction: column; gap: 16px; color: var(--ink); text-decoration: none; }
     .demo svg { display: block; width: 100%; height: auto; border-radius: var(--radius-play);
       box-shadow: 0 6px 0 rgb(37 40 61 / .08); transition: transform .18s ease, box-shadow .18s ease; }
@@ -98,6 +97,26 @@
           </g>
         </svg>
         <div class="row"><h2>Ruta</h2><span class="btn primary">Jugar</span></div>
+      </a>
+      <a class="demo" href="/tools">
+        <svg viewBox="0 0 400 220" aria-hidden="true">
+          <rect width="400" height="220" fill="#eef6f3"/>
+          <rect x="30" y="26" width="150" height="26" rx="13" fill="#fff"/>
+          <rect x="44" y="35" width="86" height="8" rx="4" fill="#cfc1f9"/>
+          <path d="M105,60 L105,86 M105,86 L58,86 M105,86 L200,86 M105,86 L105,104" fill="none" stroke="#cfc1f9" stroke-width="4" stroke-linecap="round"/>
+          <g>
+            <rect x="24" y="96" width="68" height="34" rx="12" fill="#ffc53d"/><rect x="36" y="109" width="44" height="8" rx="4" fill="#fff" opacity=".9"/>
+            <rect x="70" y="150" width="76" height="34" rx="12" fill="#2bb3bd"/><rect x="82" y="163" width="52" height="8" rx="4" fill="#fff" opacity=".9"/>
+            <rect x="166" y="96" width="68" height="34" rx="12" fill="#7757e4"/><rect x="178" y="109" width="44" height="8" rx="4" fill="#fff" opacity=".9"/>
+            <rect x="268" y="62" width="76" height="34" rx="12" fill="#e3e6ee"/><rect x="280" y="75" width="52" height="8" rx="4" fill="#fff"/>
+            <rect x="286" y="150" width="76" height="34" rx="12" fill="#e3e6ee"/><rect x="298" y="163" width="52" height="8" rx="4" fill="#fff"/>
+          </g>
+          <path d="M92,113 L166,113" fill="none" stroke="#6c4ee3" stroke-width="5" stroke-linecap="round" stroke-dasharray="1 11"/>
+          <path d="M108,150 L108,130" fill="none" stroke="#6c4ee3" stroke-width="5" stroke-linecap="round" stroke-dasharray="1 11"/>
+          <circle cx="200" cy="113" r="9" fill="#6c4ee3"/>
+          <path d="M196,113 l3,4 l7,-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="row"><h2>Herramientas</h2><span class="btn primary">Jugar</span></div>
       </a>
     </section>
   </main>

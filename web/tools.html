@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Herramientas · Laya Showcase</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%236c4ee3'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root { --agenda: #ffc53d; --correo: #e88bb3; --crm: #7757e4; --archivos: #4fa8f0;
+            --datos: #2bb3bd; --soporte: #ff6b5b; --web: #3ddba8; }
+    main { padding: 0 clamp(16px, 3vw, 32px) 40px; }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin: 4px 0 16px; }
+    .head h1 { font-size: clamp(26px, 3.4vw, 40px); }
+    .tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+    /* Petición: el campo y los ejemplos. */
+    .ask { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .ask input { flex: 1 1 380px; min-width: 0; height: 52px; padding: 0 20px; border: 0; border-radius: 999px;
+      background: var(--card); box-shadow: inset 0 0 0 2px var(--line); font-weight: 700; }
+    .ask input::placeholder { color: var(--muted); font-weight: 600; }
+    .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .examples button { border: 0; cursor: pointer; padding: 7px 14px; border-radius: 999px; background: var(--violet-soft);
+      color: var(--violet-deep); font: inherit; font-weight: 800; font-size: 13px; }
+    .examples button:hover { background: #e2dafb; }
+
+    .top { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 18px; align-items: start; }
+
+    /* Catálogo: las 20 herramientas, para imaginar peticiones y juzgar la ruta. */
+    .catalog { max-height: 720px; overflow: auto; }
+    .catalog h2 { position: sticky; top: -20px; background: var(--card); padding-bottom: 4px; margin: 0 0 8px; }
+    .server { margin-bottom: 14px; }
+    .server > h3 { display: flex; align-items: center; gap: 8px; font-size: 13px; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted); margin: 0 0 6px; }
+    .server .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+    .tool { display: grid; grid-template-columns: 24px 1fr; gap: 8px; padding: 8px 10px; border-radius: 12px;
+      transition: background .3s ease; }
+    .tool.used { background: var(--violet-soft); }
+    .tool .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none;
+      background: var(--violet); color: #fff; font-weight: 900; font-size: 12px; }
+    .tool .n.rule { background: var(--muted); }
+    .tool code { font-weight: 900; font-size: 13px; color: var(--ink); }
+    .tool.used code { color: var(--violet-deep); }
+    .tool small { display: block; color: var(--muted); font-weight: 600; line-height: 1.35; }
+
+    /* Escenario: una vuelta de decisión. */
+    .stage { min-height: 560px; }
+    .stage .who-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .stage .who-line .mode { font-weight: 800; color: var(--muted); font-size: 13px; }
+    .turnpill { display: inline-block; font-size: 12px; font-weight: 900; color: var(--violet-deep);
+      background: var(--violet-soft); padding: 4px 10px; border-radius: 999px; }
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .step { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 14px; border-radius: 16px;
+      box-shadow: inset 0 0 0 2px var(--line); transition: opacity .25s ease, box-shadow .25s ease; }
+    .step.wide { grid-column: 1 / -1; }
+    .step.pending { opacity: .3; }
+    .step.active { box-shadow: inset 0 0 0 2px var(--violet); }
+    .step .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--violet-soft); color: var(--violet-deep); font-weight: 900; }
+    .step h4 { margin: 3px 0 10px; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+    .step h4 b { color: var(--muted); font-size: 13px; font-weight: 800; }
+    .state-list { display: grid; gap: 8px; }
+    .state-list > div { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: start; }
+    .state-list code { font-size: 12px; font-weight: 900; color: var(--violet-deep); overflow-wrap: anywhere; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+      background: var(--bg); font-weight: 800; font-size: 12px; color: var(--ink-2); }
+    .chip.win { background: var(--violet); color: #fff; }
+    .chip.rule { background: var(--violet-soft); color: var(--violet-deep); }
+    .bars { display: grid; gap: 6px; }
+    .bar-row { display: grid; grid-template-columns: 1fr 44px; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+    .bar-row.win { color: var(--violet-deep); font-weight: 900; }
+    .bar-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-row .track { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: -2px; }
+    .bar-row .track i { display: block; height: 100%; width: 0; border-radius: 4px; background: #cfc1f9; transition: width .45s ease; }
+    .bar-row.win .track i { background: var(--violet); }
+
+    /* Medidor de «¿ya está cubierta?»: la probabilidad frente al umbral. */
+    .gauge { position: relative; height: 14px; border-radius: 999px; background: var(--bg); overflow: hidden; margin: 6px 0 10px; }
+    .gauge i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--violet); transition: width .5s ease; }
+    .gauge .mark { position: absolute; top: -3px; width: 3px; height: 20px; border-radius: 2px; background: var(--ink); opacity: .55; }
+    .verdict { display: flex; align-items: baseline; gap: 8px; }
+    .verdict .pct { font-size: 28px; font-weight: 1000; letter-spacing: -.03em; }
+    .verdict small { color: var(--muted); font-weight: 700; }
+    .first { color: var(--muted); font-weight: 700; }
+
+    .calls { display: flex; flex-wrap: wrap; gap: 8px; }
+    .call { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: var(--bg); }
+    .call code { font-weight: 900; font-size: 13px; }
+    .call small { color: var(--muted); font-weight: 700; }
+    .call.rule { background: var(--violet-soft); }
+    .call.rule code { color: var(--violet-deep); }
+    .idle { display: grid; place-items: center; min-height: 500px; text-align: center; }
+    .idle h3 { font-size: 24px; margin-bottom: 6px; max-width: 30ch; }
+    .idle p { color: var(--muted); font-weight: 700; }
+
+    /* Ruta: las llamadas en orden. */
+    .route { margin-top: 18px; }
+    .route h2 { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: baseline; }
+    .track-row { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; align-items: stretch; }
+    .stop { flex: none; width: 200px; padding: 12px 14px; border-radius: 16px; background: var(--bg); position: relative;
+      display: flex; flex-direction: column; align-items: flex-start; animation: pop .4s ease; }
+    .stop + .stop::before { content: ""; position: absolute; left: -10px; top: 50%; width: 10px; height: 3px; background: var(--line); }
+    .stop .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+      background: var(--violet); color: #fff; font-weight: 900; font-size: 13px; }
+    .stop .n.rule { background: var(--muted); }
+    .stop code { display: block; margin: 8px 0 4px; font-weight: 900; line-height: 1.2; }
+    .stop small { display: block; margin-bottom: 8px; color: var(--muted); font-weight: 700; }
+    .stop .tag { display: block; width: fit-content; margin-top: auto; padding-top: 3px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800;
+      background: var(--violet-soft); color: var(--violet-deep); }
+    .empty { color: var(--muted); font-weight: 700; padding: 20px 4px; }
+    @keyframes pop { from { transform: scale(.9); opacity: 0; } }
+
+    @media (max-width: 980px) {
+      .top { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .stage { min-height: 0; }
+      .catalog { max-height: 340px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><b>Laya Showcase</b><span>Herramientas</span></a>
+    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando Laya…</span></p>
+  </header>
+  <main>
+    <div class="head">
+      <h1>Ruta de llamadas</h1>
+      <div class="tools-row">
+        <span class="speed" id="speed" aria-live="polite" hidden></span>
+        <span id="mode"></span>
+        <button class="btn" id="clear" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>Limpiar</button>
+      </div>
+    </div>
+    <form class="ask" id="ask">
+      <input id="prompt" type="text" maxlength="300" autocomplete="off" placeholder="¿Qué quieres que haga el agente?">
+      <button class="btn primary" id="trace" type="submit">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Trazar ruta</button>
+    </form>
+    <div class="examples" id="examples"></div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="top">
+      <section class="panel catalog" aria-label="Herramientas disponibles">
+        <h2>20 herramientas</h2>
+        <div id="catalog"></div>
+      </section>
+      <section class="panel stage" id="stage" aria-live="polite"></section>
+    </div>
+    <section class="panel route" aria-label="Ruta de llamadas">
+      <h2>Llamadas <span class="muted" id="route-note"></span></h2>
+      <div class="track-row" id="track"></div>
+    </section>
+  </main>
+  <script type="module" src="tools.js"></script>
+</body>
+</html>
