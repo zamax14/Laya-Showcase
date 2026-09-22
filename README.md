@@ -47,9 +47,11 @@ agent.predict({"ticket": "No conecta la VPN desde casa. Trabajo en remoto y..."}
 
 ### Mesa de ayuda
 
-20 tickets de TI esperan en la cola. **Asignar con Laya** los toma uno a uno y enseña cada paso:
-categoría, prioridad, el experto responsable y un **semáforo** que dice cuánta atención humana
-necesita la asignación.
+20 tickets de TI esperan en la cola. **Asignar con Laya** los toma uno a uno: categoría, prioridad,
+el experto responsable y un **semáforo** que dice cuánta atención humana necesita la asignación.
+En **Tiempo real** cada ticket aparece en cuanto Laya lo decide (los 20 en 0,4 s en GPU) y un
+indicador muestra los milisegundos por ticket. **Paso a paso** va más despacio para seguir cada
+decisión, como en el GIF de arriba.
 
 | Semáforo | Confianza | Qué significa | Aciertos medidos |
 |---|---|---|---|
@@ -115,8 +117,8 @@ lo indica. Medido en una RTX 4050 de portátil frente a su propia CPU, con el mi
 En GPU Laya calcula en bf16, y aun así las decisiones son las mismas. Los 20 tickets reciben la
 misma categoría, prioridad y semáforo, con 1,4 puntos de confianza de diferencia como mucho. El
 Atlas da el mismo top 10 en cinco consultas y City toma las mismas 19 decisiones. Usa 1,5 GB de
-memoria de vídeo. La Mesa de ayuda no se nota más rápida porque la página reproduce cada ticket a
-ritmo de lectura; donde se nota es en el Atlas.
+memoria de vídeo. En la página, la Mesa de ayuda en Tiempo real deja los 20 tickets asignados en
+0,42 s, y el Atlas colorea el mapa en menos de 2 s.
 
 ## Cómo está hecho
 
