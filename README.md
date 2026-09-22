@@ -2,7 +2,7 @@
 
 # Laya Showcase
 
-**Cuatro demos en el navegador para ver decidir a [Laya](https://huggingface.co/convaiinnovations/laya),
+**Cinco demos en el navegador para ver decidir a [Laya](https://huggingface.co/convaiinnovations/laya),
 un modelo de decisión open source que corre en tu CPU o en tu GPU.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-6c4ee3?logo=python&logoColor=white)](#empezar)
@@ -45,7 +45,7 @@ agent.predict({"ticket": "No conecta la VPN desde casa. Trabajo en remoto y..."}
 
 ## Las demos
 
-Las cuatro tienen dos modos, y el que elijas se recuerda al cambiar de demo:
+Las cinco tienen dos modos, y el que elijas se recuerda al cambiar de demo:
 
 - **Real-Time**: cada decisión aparece en cuanto Laya la toma, y al terminar un indicador muestra
   los milisegundos por decisión y si corrió en GPU o CPU.
@@ -55,6 +55,7 @@ Las cuatro tienen dos modos, y el que elijas se recuerda al cambiar de demo:
 |---|---|---|
 | Mesa de ayuda: 20 tickets | 0,4 s | 20 ms |
 | Ruta: 7 cursos encadenados | 0,6 s | 19 ms |
+| Herramientas: una ruta de 4 llamadas | 0,4 s | 33 ms por vuelta |
 | Atlas: 176 países | 2,4 s | 13 ms |
 | City: un viaje de 19 decisiones | 3,1 s con el taxi animado | 31 ms |
 
@@ -89,6 +90,26 @@ tres objetivos y los tres estudiantes, Laya llega al objetivo en las 9 rutas y 5
 que elige aportan algo, contando los que desbloquean a otro.
 
 <img src="docs/ruta.png" alt="Ruta: el estado del estudiante, los candidatos, las probabilidades y los siete cursos elegidos" width="880">
+
+### Herramientas
+
+Un agente con 20 herramientas MCP repartidas en siete servidores. Escribes lo que quieres
+(«agenda una reunión con el cliente Nordia») y Laya traza la ruta de llamadas. Cada vuelta son tres
+preguntas tipadas y una regla:
+
+| | Pregunta | Tipo |
+|---|---|---|
+| 1 | ¿Lo ya llamado cubre la petición? | `noul` |
+| 2 | ¿A qué servidor hay que pedirle lo siguiente? | `choice` entre 7 |
+| 3 | ¿Qué herramienta de ese servidor? | `choice` entre 2 y 4 |
+| 4 | ¿Le falta algún argumento? | regla: delante van las que lo producen |
+
+El catálogo entero está a la vista con su descripción, para inventar peticiones y juzgar el
+resultado. Sobre las ocho peticiones de ejemplo, la ruta sale completa en 4 y clavada en 3; acierta
+15 de las 23 llamadas y añade 6 de más. Es la demo donde más se le ven las costuras: si la petición
+tiene dos intenciones («mira internet **y** deja una nota»), suele quedarse en la primera.
+
+<img src="docs/herramientas.png" alt="Ruta de llamadas: el catálogo de 20 herramientas, la distribución por servidor y la herramienta elegida" width="880">
 
 ### Atlas
 
@@ -140,12 +161,14 @@ lo indica. Medido en una RTX 4050 de portátil frente a su propia CPU, con el mi
 | City: una decisión | 429 ms | 24 ms | **18×** |
 | Mesa de ayuda: 20 tickets | 3,9 s | 0,7 s | **5,9×** |
 | Ruta: 7 cursos encadenados | 1,3 s | 0,15 s | **8,5×** |
+| Herramientas: 8 peticiones | 3,7 s | 0,7 s | **5,6×** |
 | Carga del modelo | 4,3 s | 2,9 s | 1,5× |
 
 En GPU Laya calcula en bf16, y aun así las decisiones son las mismas. Los 20 tickets reciben la
 misma categoría, prioridad y semáforo, con 1,4 puntos de confianza de diferencia como mucho. El
 Atlas da el mismo top 10 en cinco consultas, City toma las mismas 19 decisiones y la Ruta elige los
-mismos cursos en el mismo orden. Usa 1,5 GB de memoria de vídeo.
+mismos cursos en el mismo orden, y el enrutador traza las mismas ocho rutas de llamadas. Usa
+1,5 GB de memoria de vídeo.
 
 ## Cómo está hecho
 
@@ -154,16 +177,17 @@ flowchart LR
     B["Navegador<br/>HTML + CSS + JS"] -- "JSON y streaming SSE" --> S["server.py<br/>http.server"]
     S --> T["tickets.py"]
     S --> R["courses.py"]
+    S --> H["tools.py"]
     S --> A["atlas.py"]
     S --> C["city.py"]
-    T & R & A & C --> M["fastload.py<br/>una sola instancia de Laya"]
+    T & R & H & A & C --> M["fastload.py<br/>una sola instancia de Laya"]
 ```
 
 - **Sin dependencias extra.** Aparte de `laya`, solo la biblioteca estándar de Python. El frontend
   no tiene paso de compilación, y la tipografía va incluida.
 - **Resultados en streaming.** El Atlas y la Mesa de ayuda reciben cada resultado por SSE en cuanto
   sale. Una consulta nueva cancela la anterior en el servidor.
-- **Un modelo para todo.** Las cuatro demos comparten una instancia de Laya con las inferencias en
+- **Un modelo para todo.** Las cinco demos comparten una instancia de Laya con las inferencias en
   serie. Antes de cada inferencia se comprueba que el estado cabe en el contexto, porque Laya lo
   truncaría en silencio.
 
@@ -190,6 +214,12 @@ Cada decisión de diseño salió de medir con el modelo real:
 - **Laya no planifica dos pasos.** Elige bien el curso siguiente, pero nunca tomaba Git, y sin Git
   no llegaba a «Modelos en producción»: 4 de las 9 rutas se quedaban sin objetivo. Encadenar
   prerrequisitos es una regla; decidir cuál toca, del modelo.
+- **Un `choice` de 20 opciones no discrimina.** Elegir entre las 20 herramientas de golpe daba 1 de
+  8 rutas. Preguntando primero el servidor (7 opciones) y luego la herramienta de ese servidor (2 a
+  4), el servidor elegido pertenece a la ruta correcta en 7 de 8 peticiones.
+- **Cómo preguntes el «ya basta» decide la ruta.** Con «¿queda algo por hacer?» salían 1 de 8 rutas
+  clavadas; con la pregunta al revés, «¿lo ya llamado cubre la petición?», 3 de 8. Misma información,
+  distinta polaridad.
 - **Las instrucciones en inglés clasifican mejor**, aunque el ticket esté en español: la prioridad
   acierta 11/20 frente a 7/20.
 - **Torch solo CPU por defecto.** El entorno pasa de 5,6 GB a 1,2 GB, a la misma velocidad en CPU.
@@ -208,6 +238,7 @@ Donde no llega, también se cuenta. El Atlas confunde el vino de uva con el vino
 ├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU
 ├── tickets.py       Mesa de ayuda: tickets, preguntas y semáforo
 ├── courses.py       Ruta: catálogo, objetivos, prerrequisitos y bucle de decisión
+├── tools.py         Herramientas: catálogo MCP, preguntas por vuelta y encadenado de argumentos
 ├── atlas.py         Atlas: fichas, calibración por país y barridos cancelables
 ├── city.py          City: mapa, reglas, protección y sorteo
 ├── assets/          mapa, fichas de cocina y calibración
@@ -226,8 +257,9 @@ node --test tests/test_web.mjs
 ```
 
 Cubren el semáforo y el reparto de tickets, el catálogo y el bucle de la Ruta (prerrequisitos,
-final garantizado y respuestas fuera de los candidatos), las fichas y la calibración del Atlas, las
-reglas de City (también con conductores que eligen mal y viajes sorteados), la API con un modelo
+final garantizado y respuestas fuera de los candidatos), el enrutado de herramientas (encadenado de
+argumentos, parada y respuestas inválidas), las fichas y la calibración del Atlas, las reglas de
+City (también con conductores que eligen mal y viajes sorteados), la API con un modelo
 falso (streaming, cancelación, errores del modelo) y la proyección y los colores del mapa.
 
 ## Créditos
@@ -236,7 +268,7 @@ falso (streaming, cancelación, errores del modelo) y la proyección y los color
   pesos no se incluyen: se descargan de Hugging Face.
 - **Mapa** de [Natural Earth](https://www.naturalearthdata.com/), dominio público.
 - **Tipografía** [Nunito](https://github.com/googlefonts/nunito), SIL Open Font License 1.1.
-- **Fichas de cocina, tickets y cursos** redactados con Claude: simplifican y son ficticios. Las
-  fichas, detalladas en [assets/README.md](assets/README.md); los tickets y el catálogo de cursos
-  viven en `tickets.py` y `courses.py`.
+- **Fichas de cocina, tickets, cursos y herramientas** redactados con Claude: simplifican y son
+  ficticios. Las fichas, detalladas en [assets/README.md](assets/README.md); lo demás vive en
+  `tickets.py`, `courses.py` y `tools.py`.
 - **Código** bajo licencia [MIT](LICENSE).
