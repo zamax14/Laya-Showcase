@@ -68,7 +68,7 @@ class ServerChecks(unittest.TestCase):
         status, kind, body = self.get("/")
         self.assertEqual(status, 200)
         self.assertIn("text/html", kind)
-        for page in ("/atlas", "/city", "/courses", "/style.css", "/lib.js"):
+        for page in ("/atlas", "/city", "/courses", "/tools", "/style.css", "/lib.js"):
             self.assertEqual(self.get(page)[0], 200, page)
 
     def test_files_outside_web_are_not_served(self):
@@ -137,6 +137,27 @@ class ServerChecks(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as error:
                 self.get(path, "POST")
             self.assertEqual(error.exception.code, 409, path)  # Ruta terminada / objetivo desconocido.
+
+    def test_tool_router_traces_a_route_for_a_prompt(self):
+        box = json.loads(self.get("/api/tools")[2])
+        self.assertEqual(len(box["herramientas"]), 20)
+        self.assertTrue(all("referencia" not in e for e in box["ejemplos"]))  # La ruta esperada no llega a la página.
+        empty = json.loads(self.get("/api/tools/reset", "POST")[2])["view"]
+        self.assertEqual((empty["done"], empty["llamadas"]), (True, []))  # Sin petición no hay ruta.
+        prompt = urllib.parse.quote("Agenda una reunión con Nordia")
+        view = json.loads(self.get(f"/api/tools/reset?q={prompt}", "POST")[2])["view"]
+        self.assertEqual((view["peticion"], view["done"]), ("Agenda una reunión con Nordia", False))
+        turns = 0
+        while not view["done"]:
+            payload = json.loads(self.get("/api/tools/step", "POST")[2])
+            record, view = payload["record"], payload["view"]
+            turns += 1
+            self.assertEqual(record["vuelta"], turns)
+        self.assertTrue(view["llamadas"])
+        self.assertEqual([c["id"] for c in view["llamadas"]], [c["id"] for r in view["history"] for c in r["llamadas"]])
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            self.get("/api/tools/step", "POST")
+        self.assertEqual(error.exception.code, 409)
 
     def test_help_desk_assigns_every_ticket_once(self):
         self.get("/api/tickets/reset", "POST")

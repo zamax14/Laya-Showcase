@@ -19,10 +19,11 @@ from atlas import MAX_QUERY, Evaluator, country_state, load_countries
 from city import MAP, Trip, drive, random_scenario
 import courses
 import tickets
+import tools
 
 WEB = Path(__file__).resolve().parent / "web"
 PAGES = {"/": "index.html", "/atlas": "atlas.html", "/city": "city.html", "/tickets": "tickets.html",
-         "/courses": "courses.html"}
+         "/courses": "courses.html", "/tools": "tools.html"}
 KEEPALIVE = 15  # s sin eventos antes de un ping; así se detecta una pestaña cerrada.
 
 
@@ -41,6 +42,7 @@ class App:
         self.scenario = {}  # Vacío: el viaje por defecto de Trip.
         self.trip, self.trip_lock = Trip(), threading.Lock()
         self.roadmap, self.roadmap_lock = courses.Roadmap(), threading.Lock()
+        self.route, self.route_lock = tools.Route(), threading.Lock()
 
     def status(self):
         return {"model": getattr(self.model, "status", "ready"), "error": getattr(self.model, "error", None),
@@ -86,6 +88,22 @@ class App:
                 raise LookupError(str(exc))
             return {"view": self.roadmap.view()}
 
+    def toolbox(self):
+        return {"servidores": tools.servers(), "herramientas": tools.catalog(),
+                "ejemplos": [tools.public(e) for e in tools.EXAMPLES], "view": self.route.view()}
+
+    def route_step(self):
+        with self.route_lock:
+            return {"record": self.route.turn(self.model.predict), "view": self.route.view()}
+
+    def route_reset(self, query):
+        with self.route_lock:
+            try:
+                self.route = tools.Route(query.get("q", [""])[0])
+            except ValueError as exc:
+                raise LookupError(str(exc))
+            return {"view": self.route.view()}
+
     def desk(self):
         return {"tickets": [tickets.public(t) for t in tickets.TICKETS],
                 "categorias": {k: {"nombre": name, "experto": owner} for k, (name, owner, _) in tickets.CATEGORIES.items()},
@@ -126,6 +144,7 @@ def handler_for(app):
                       "/api/atlas/query": lambda: self.stream_query(parse_qs(url.query).get("q", [""])[0]),
                       "/api/city": lambda: self.send_json(app.city()),
                       "/api/courses": lambda: self.send_json(app.courses()),
+                      "/api/tools": lambda: self.send_json(app.toolbox()),
                       "/api/tickets": lambda: self.send_json(app.desk()),
                       "/api/tickets/assign": self.stream_assign}
             if url.path in routes:
@@ -136,7 +155,9 @@ def handler_for(app):
             url = urlparse(self.path)
             actions = {"/api/city/step": app.step, "/api/city/reset": app.reset, "/api/city/shuffle": app.shuffle,
                        "/api/tickets/reset": app.reset_desk, "/api/courses/step": app.course_step,
-                       "/api/courses/reset": lambda: app.course_reset(parse_qs(url.query))}
+                       "/api/courses/reset": lambda: app.course_reset(parse_qs(url.query)),
+                       "/api/tools/step": app.route_step,
+                       "/api/tools/reset": lambda: app.route_reset(parse_qs(url.query))}
             action = actions.get(url.path)
             if action is None:
                 return self.send_json({"error": "Ruta desconocida"}, HTTPStatus.NOT_FOUND)
