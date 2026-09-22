@@ -3,10 +3,11 @@
 # Laya Showcase
 
 **Tres demos en el navegador para ver decidir a [Laya](https://huggingface.co/convaiinnovations/laya),
-un modelo de decisión open source que corre en tu CPU.**
+un modelo de decisión open source que corre en tu CPU o en tu GPU.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-6c4ee3?logo=python&logoColor=white)](#empezar)
 [![Modelo: Laya](https://img.shields.io/badge/modelo-Laya%20multilingual-ffc53d?logo=huggingface&logoColor=black)](https://huggingface.co/convaiinnovations/laya)
+[![GPU opcional](https://img.shields.io/badge/GPU-opcional%20·%2018×-76b900?logo=nvidia&logoColor=white)](#con-gpu)
 [![Frontend sin build](https://img.shields.io/badge/frontend-sin%20build-4fa8f0)](#cómo-está-hecho)
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-2fbf94)](LICENSE)
 
@@ -28,7 +29,7 @@ Le das un estado (un ticket, un correo, un JSON) y preguntas de tres tipos:
 Todo sale de una sola pasada del modelo, con probabilidades calibradas y sin texto que parsear ni
 alucinar. Es de [ConvAI Innovations](https://huggingface.co/convaiinnovations/laya), con licencia
 Apache-2.0, y sus autores la comparan con TypeSafe Jev en su ficha de Hugging Face. Aquí se usa el
-checkpoint **multilingüe** (mmBERT-base, 322 M de parámetros), en CPU y en español.
+checkpoint **multilingüe** (mmBERT-base, 322 M de parámetros), en CPU o GPU y en español.
 
 ```python
 questions = {
@@ -91,6 +92,32 @@ python3 -m venv .venv
 Se abre `http://127.0.0.1:8000`. La primera vez descarga el checkpoint de Hugging Face (~650 MB);
 después funciona sin internet. `--port 8001` cambia el puerto y `--no-browser` no abre el navegador.
 
+### Con GPU
+
+Con una GPU NVIDIA, instala torch con CUDA en lugar del de CPU:
+
+```bash
+.venv/bin/pip install -r requirements-gpu.txt
+.venv/bin/python server.py                # usa la GPU si torch la ve
+.venv/bin/python server.py --device cpu   # para comparar
+```
+
+La terminal dice dónde cargó Laya («Laya lista en CUDA en 2,9 s») y la barra superior de la página
+lo indica. Medido en una RTX 4050 de portátil frente a su propia CPU, con el mismo código:
+
+| | CPU | GPU | Mejora |
+|---|---|---|---|
+| Atlas: un barrido de 176 países | 15,9 s | 1,9 s | **8,4×** |
+| City: una decisión | 429 ms | 24 ms | **18×** |
+| Mesa de ayuda: 20 tickets | 3,9 s | 0,7 s | **5,9×** |
+| Carga del modelo | 4,3 s | 2,9 s | 1,5× |
+
+En GPU Laya calcula en bf16, y aun así las decisiones son las mismas. Los 20 tickets reciben la
+misma categoría, prioridad y semáforo, con 1,4 puntos de confianza de diferencia como mucho. El
+Atlas da el mismo top 10 en cinco consultas y City toma las mismas 19 decisiones. Usa 1,5 GB de
+memoria de vídeo. La Mesa de ayuda no se nota más rápida porque la página reproduce cada ticket a
+ritmo de lectura; donde se nota es en el Atlas.
+
 ## Cómo está hecho
 
 ```mermaid
@@ -128,7 +155,11 @@ Cada decisión de diseño salió de medir con el modelo real:
   a ciberseguridad; ahora el experto es el responsable de la categoría.
 - **Las instrucciones en inglés clasifican mejor**, aunque el ticket esté en español: la prioridad
   acierta 11/20 frente a 7/20.
-- **Torch solo CPU.** El entorno pasa de 5,6 GB a 1,2 GB, a la misma velocidad.
+- **Torch solo CPU por defecto.** El entorno pasa de 5,6 GB a 1,2 GB, a la misma velocidad en CPU.
+- **GPU sin compilar nada.** torch 2.14 manda una operación del encoder a Triton, que necesita
+  `Python.h` para compilar. Con su interruptor oficial `TORCH_DISABLE_NATIVE_JIT=1` usa la operación
+  normal de torch, así que no hace falta instalar `python3-dev`. Torch lo lee al importarse, por eso
+  `fastload.py` lo activa antes.
 
 Donde no llega, también se cuenta. El Atlas confunde el vino de uva con el vino de palma, y
 «a la parrilla» queda enterrado en el texto libre.
@@ -137,7 +168,7 @@ Donde no llega, también se cuenta. El Atlas confunde el vino de uva con el vino
 
 ```
 ├── server.py        servidor y API
-├── fastload.py      carga rápida y compartida de Laya
+├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU
 ├── tickets.py       Mesa de ayuda: tickets, preguntas y semáforo
 ├── atlas.py         Atlas: fichas, calibración por país y barridos cancelables
 ├── city.py          City: mapa, reglas, protección y sorteo
