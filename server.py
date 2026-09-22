@@ -17,10 +17,12 @@ from urllib.parse import parse_qs, urlparse
 
 from atlas import MAX_QUERY, Evaluator, country_state, load_countries
 from city import MAP, Trip, drive, random_scenario
+import courses
 import tickets
 
 WEB = Path(__file__).resolve().parent / "web"
-PAGES = {"/": "index.html", "/atlas": "atlas.html", "/city": "city.html", "/tickets": "tickets.html"}
+PAGES = {"/": "index.html", "/atlas": "atlas.html", "/city": "city.html", "/tickets": "tickets.html",
+         "/courses": "courses.html"}
 KEEPALIVE = 15  # s sin eventos antes de un ping; así se detecta una pestaña cerrada.
 
 
@@ -38,6 +40,7 @@ class App:
         self.assigned, self.assigning = {}, threading.Lock()  # Mesa de ayuda: resultados por ticket.
         self.scenario = {}  # Vacío: el viaje por defecto de Trip.
         self.trip, self.trip_lock = Trip(), threading.Lock()
+        self.roadmap, self.roadmap_lock = courses.Roadmap(), threading.Lock()
 
     def status(self):
         return {"model": getattr(self.model, "status", "ready"), "error": getattr(self.model, "error", None),
@@ -63,6 +66,25 @@ class App:
 
     def city(self):
         return {"map": MAP, "view": self.trip.view()}
+
+    def courses(self):
+        return {"cursos": [courses.public(c) for c in courses.COURSES], "objetivos": courses.GOALS,
+                "perfiles": courses.PROFILES, "habilidades": courses.SKILLS, "view": self.roadmap.view()}
+
+    def course_step(self):
+        with self.roadmap_lock:
+            return {"record": self.roadmap.step(self.model.predict), "view": self.roadmap.view()}
+
+    def course_reset(self, query):
+        """Empieza otra ruta; sin parámetros repite el objetivo y el perfil actuales."""
+        with self.roadmap_lock:
+            goal = query.get("objetivo", [self.roadmap.goal])[0]
+            profile = query.get("perfil", [self.roadmap.profile])[0]
+            try:
+                self.roadmap = courses.Roadmap(goal, profile)
+            except ValueError as exc:
+                raise LookupError(str(exc))
+            return {"view": self.roadmap.view()}
 
     def desk(self):
         return {"tickets": [tickets.public(t) for t in tickets.TICKETS],
@@ -103,6 +125,7 @@ def handler_for(app):
                       "/api/atlas/countries": lambda: self.send_bytes(app.countries, "application/json; charset=utf-8"),
                       "/api/atlas/query": lambda: self.stream_query(parse_qs(url.query).get("q", [""])[0]),
                       "/api/city": lambda: self.send_json(app.city()),
+                      "/api/courses": lambda: self.send_json(app.courses()),
                       "/api/tickets": lambda: self.send_json(app.desk()),
                       "/api/tickets/assign": self.stream_assign}
             if url.path in routes:
@@ -110,9 +133,11 @@ def handler_for(app):
             self.send_static(PAGES.get(url.path, url.path.lstrip("/")))
 
         def do_POST(self):
+            url = urlparse(self.path)
             actions = {"/api/city/step": app.step, "/api/city/reset": app.reset, "/api/city/shuffle": app.shuffle,
-                       "/api/tickets/reset": app.reset_desk}
-            action = actions.get(urlparse(self.path).path)
+                       "/api/tickets/reset": app.reset_desk, "/api/courses/step": app.course_step,
+                       "/api/courses/reset": lambda: app.course_reset(parse_qs(url.query))}
+            action = actions.get(url.path)
             if action is None:
                 return self.send_json({"error": "Ruta desconocida"}, HTTPStatus.NOT_FOUND)
             try:

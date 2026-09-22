@@ -68,7 +68,7 @@ class ServerChecks(unittest.TestCase):
         status, kind, body = self.get("/")
         self.assertEqual(status, 200)
         self.assertIn("text/html", kind)
-        for page in ("/atlas", "/city", "/style.css", "/lib.js"):
+        for page in ("/atlas", "/city", "/courses", "/style.css", "/lib.js"):
             self.assertEqual(self.get(page)[0], 200, page)
 
     def test_files_outside_web_are_not_served(self):
@@ -119,6 +119,24 @@ class ServerChecks(unittest.TestCase):
         again = json.loads(self.get("/api/city/reset", "POST")[2])["view"]
         self.assertEqual((again["car"], again["passenger"], again["destination"], again["tick"]), (*places, 0))
 
+
+    def test_courses_builds_a_roadmap_until_it_is_done(self):
+        catalog = json.loads(self.get("/api/courses")[2])
+        self.assertTrue(catalog["cursos"] and catalog["objetivos"] and catalog["perfiles"])
+        view = json.loads(self.get("/api/courses/reset?objetivo=data-science&perfil=ana", "POST")[2])["view"]
+        self.assertEqual((view["objetivo"], view["perfil"], view["ruta"]), ("data-science", "ana", []))
+        steps = 0
+        while not view["done"]:
+            payload = json.loads(self.get("/api/courses/step", "POST")[2])
+            record, view = payload["record"], payload["view"]
+            steps += 1
+            self.assertIn(record["curso"], [c["id"] for c in record["candidatos"]])
+            self.assertEqual(record["paso"], steps)
+        self.assertEqual((len(view["ruta"]), len(view["history"])), (steps, steps))
+        for path in ("/api/courses/step", "/api/courses/reset?objetivo=no-existe"):
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                self.get(path, "POST")
+            self.assertEqual(error.exception.code, 409, path)  # Ruta terminada / objetivo desconocido.
 
     def test_help_desk_assigns_every_ticket_once(self):
         self.get("/api/tickets/reset", "POST")
