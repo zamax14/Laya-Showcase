@@ -150,7 +150,7 @@ class Evaluator:
                         events.put(("batch", scores))
                         scores = {}
                 else:
-                    events.put(("done", round(time.monotonic() - started, 1)))
+                    events.put(("done", round(time.monotonic() - started, 2)))
             except Exception as exc:
                 if not cancelled.is_set():
                     events.put(("failed", f"{type(exc).__name__}: {exc}"))

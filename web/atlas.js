@@ -1,4 +1,4 @@
-import { $, svg, watchModel } from "./common.js";
+import { $, modeToggle, showSpeed, svg, watchModel } from "./common.js";
 import { RAMP, colorFor, equalEarth, pathFor } from "./lib.js";
 
 const SCALE = 180; // Unidades SVG por unidad de la proyección.
@@ -8,9 +8,14 @@ const number = new Intl.NumberFormat("es", { minimumFractionDigits: 2, maximumFr
 const map = $("#map"), tooltip = $("#tooltip"), input = $("#q"), statusLine = $("#status");
 const scores = {}, paths = {};
 let selected = null, source = null, timer = null, ranked = [], shadow;
+// Paso a paso: las puntuaciones llegan igual de rápido, pero se revelan país a país.
+const REVEAL = matchMedia("(prefers-reduced-motion: reduce)").matches ? 30 : 220;  // ms por país.
+let revealQueue = [], revealing = null, generation = 0, doneSeconds = null;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const range = (from, to, step) => Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
 
 watchModel($("#model"));
+const mode = modeToggle($("#mode"));
 $("#ramp").style.background = `linear-gradient(90deg, ${RAMP.join(", ")})`;
 
 const countries = await (await fetch("/api/atlas/countries")).json();
@@ -55,7 +60,7 @@ function drawMap() {
 
 input.addEventListener("input", () => {
   clearTimeout(timer);
-  stop();
+  cancel();
   clearScores();
   setStatus("");
   if (input.value.trim()) timer = setTimeout(run, DEBOUNCE);
@@ -66,33 +71,74 @@ $("#examples").addEventListener("click", event => {
 });
 
 function run() {
-  stop();
+  cancel();
   clearScores();
   const query = input.value.trim();
   setStatus("");
   if (!query) return;
+  const gen = generation, slow = mode() === "pasos";
   $("#progress").hidden = false;
   const stream = source = new EventSource("/api/atlas/query?q=" + encodeURIComponent(query));
   stream.addEventListener("batch", event => {
-    Object.assign(scores, JSON.parse(event.data));
-    paint();
+    const batch = JSON.parse(event.data);
+    if (slow) {
+      revealQueue.push(...Object.entries(batch));
+      reveal(gen);
+    } else {
+      Object.assign(scores, batch);
+      paint();
+    }
   });
-  stream.addEventListener("done", stop);
+  stream.addEventListener("done", event => {
+    doneSeconds = JSON.parse(event.data);
+    closeStream();
+    finishIfIdle(gen);
+  });
   stream.addEventListener("failed", event => {
-    stop();
+    cancel();
     setStatus(`Se detuvo: ${JSON.parse(event.data)}`);
   });
   stream.onerror = () => {
     if (source !== stream) return;
-    stop();
+    cancel();
     setStatus("Sin conexión con el servidor.");
   };
 }
 
-function stop() {
+// Revela un país cada REVEAL ms: lo resalta, lo colorea y muestra en el panel el texto que leyó Laya.
+async function reveal(gen) {
+  if (revealing === gen) return;
+  revealing = gen;
+  while (revealQueue.length && gen === generation) {
+    const [id, value] = revealQueue.shift();
+    scores[id] = value;
+    paint();
+    select(id);
+    await sleep(REVEAL);
+  }
+  if (revealing === gen) revealing = null;
+  finishIfIdle(gen);
+}
+
+function finishIfIdle(gen) {
+  if (gen !== generation || source || revealQueue.length || revealing === gen) return;
+  $("#progress").hidden = true;  // Solo se ve mientras Laya evalúa o la página revela.
+  if (doneSeconds != null) showSpeed($("#speed"), doneSeconds, countries.length, "país");
+}
+
+function closeStream() {
   source?.close();
   source = null;
-  $("#progress").hidden = true; // Solo se ve mientras Laya evalúa.
+}
+
+// Corta el barrido y la revelación en curso: un bucle de una consulta anterior nunca sigue pintando.
+function cancel() {
+  closeStream();
+  generation += 1;
+  revealQueue = [];
+  doneSeconds = null;
+  $("#progress").hidden = true;
+  $("#speed").hidden = true;
 }
 
 function clearScores() {

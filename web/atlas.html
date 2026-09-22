@@ -15,7 +15,8 @@
     }
     .ask input::placeholder { color: var(--muted); font-weight: 600; }
     .ask input:focus-visible { outline: none; border-color: var(--violet); box-shadow: 0 0 0 4px var(--violet-soft); }
-    .examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 18px; }
+    .examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 18px; }
+    .run-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
     .chip {
       border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
       background: var(--card); box-shadow: inset 0 0 0 2px var(--line); font-size: 14px; font-weight: 700; color: var(--ink-2);
@@ -110,6 +111,10 @@
       <button class="chip" type="button">Fácil para vegetarianos</button>
       <button class="chip" type="button">Platos con mucho arroz</button>
       <button class="chip" type="button">Donde se bebe buen café</button>
+      <div class="run-tools">
+        <span class="speed" id="speed" aria-live="polite" hidden></span>
+        <span id="mode"></span>
+      </div>
     </div>
     <div class="layout">
       <section class="map-card" aria-label="Mapa">
