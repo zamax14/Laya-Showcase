@@ -10,12 +10,16 @@
     main { max-width: 1120px; margin: 0 auto; padding: clamp(16px, 4vw, 48px) clamp(16px, 3vw, 32px) 48px; }
     .topbar { max-width: 1120px; margin: 0 auto; }
     h1 { font-size: clamp(40px, 7vw, 76px); letter-spacing: -0.04em; margin-bottom: clamp(28px, 5vw, 48px); }
-    .demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: clamp(16px, 3vw, 28px); }
-    .demo { display: flex; flex-direction: column; gap: 16px; color: var(--ink); text-decoration: none; }
+    /* Flex en vez de grid para que la última fila, incompleta, quede centrada. El tope de ancho
+       mantiene las tarjetas del tamaño de la fila de arriba en lugar de estirarlas. */
+    .demos { --hueco: clamp(16px, 3vw, 28px); display: flex; flex-wrap: wrap; justify-content: center; gap: var(--hueco); }
+    .demo { flex: 1 1 300px; display: flex; flex-direction: column; align-items: center; gap: 16px;
+      text-align: center; color: var(--ink); text-decoration: none; }
+    @media (min-width: 640px) { .demo { max-width: calc((100% - var(--hueco)) / 2); } }
+    @media (min-width: 1016px) { .demo { max-width: calc((100% - 2 * var(--hueco)) / 3); } }
     .demo svg { display: block; width: 100%; height: auto; border-radius: var(--radius-play);
       box-shadow: 0 6px 0 rgb(37 40 61 / .08); transition: transform .18s ease, box-shadow .18s ease; }
     .demo:hover svg { transform: translateY(-4px); box-shadow: 0 10px 0 rgb(37 40 61 / .08); }
-    .demo .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .demo h2 { font-size: 30px; }
   </style>
 </head>
@@ -28,6 +32,7 @@
     <h1>Mira decidir a Laya</h1>
     <section class="demos">
       <a class="demo" href="/atlas">
+        <h2>Atlas</h2>
         <svg viewBox="0 0 400 220" aria-hidden="true">
           <defs>
             <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -44,9 +49,10 @@
             <path d="M322,148 C342,140 364,148 362,164 C350,176 328,174 322,162Z" fill="#4428ae"/>
           </g>
         </svg>
-        <div class="row"><h2>Atlas</h2><span class="btn primary">Jugar</span></div>
+        <span class="btn primary">Jugar</span>
       </a>
       <a class="demo" href="/city">
+        <h2>City</h2>
         <svg viewBox="0 0 400 220" aria-hidden="true">
           <rect width="400" height="220" fill="#e9e3d6"/>
           <g>
@@ -63,9 +69,10 @@
           <g transform="translate(176 110)"><rect x="-22" y="-13" width="44" height="26" rx="9" fill="#ff6b5b"/><rect x="-2" y="-9" width="14" height="18" rx="4" fill="#fff" opacity=".85"/></g>
           <circle cx="262" cy="188" r="12" fill="#ffc53d" stroke="#fff" stroke-width="4"/>
         </svg>
-        <div class="row"><h2>City</h2><span class="btn primary">Jugar</span></div>
+        <span class="btn primary">Jugar</span>
       </a>
       <a class="demo" href="/tickets">
+        <h2>Mesa de ayuda</h2>
         <svg viewBox="0 0 400 220" aria-hidden="true">
           <rect width="400" height="220" fill="#efeafd"/>
           <g>
@@ -77,9 +84,10 @@
           <circle cx="322" cy="78" r="15" fill="#3a3e56"/><circle cx="322" cy="110" r="15" fill="#3a3e56"/>
           <circle cx="322" cy="142" r="15" fill="#2fbf94"/>
         </svg>
-        <div class="row"><h2>Mesa de ayuda</h2><span class="btn primary">Jugar</span></div>
+        <span class="btn primary">Jugar</span>
       </a>
       <a class="demo" href="/courses">
+        <h2>Ruta</h2>
         <svg viewBox="0 0 400 220" aria-hidden="true">
           <rect width="400" height="220" fill="#efeafd"/>
           <path d="M60,170 C120,170 120,110 180,110 C240,110 240,60 330,60" fill="none" stroke="#cfc1f9" stroke-width="10" stroke-linecap="round" stroke-dasharray="1 20"/>
@@ -96,9 +104,10 @@
             <circle cx="61" cy="130" r="5"/><circle cx="181" cy="70" r="5"/><circle cx="299" cy="20" r="5"/>
           </g>
         </svg>
-        <div class="row"><h2>Ruta</h2><span class="btn primary">Jugar</span></div>
+        <span class="btn primary">Jugar</span>
       </a>
       <a class="demo" href="/tools">
+        <h2>Herramientas</h2>
         <svg viewBox="0 0 400 220" aria-hidden="true">
           <rect width="400" height="220" fill="#eef6f3"/>
           <rect x="30" y="26" width="150" height="26" rx="13" fill="#fff"/>
@@ -116,7 +125,7 @@
           <circle cx="200" cy="113" r="9" fill="#6c4ee3"/>
           <path d="M196,113 l3,4 l7,-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <div class="row"><h2>Herramientas</h2><span class="btn primary">Jugar</span></div>
+        <span class="btn primary">Jugar</span>
       </a>
     </section>
   </main>
