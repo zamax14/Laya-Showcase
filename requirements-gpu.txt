@@ -1,0 +1,5 @@
+# Laya en una GPU NVIDIA (Linux o Windows): torch con CUDA 13 desde el índice de PyTorch.
+# Ocupa ~5,6 GB frente a ~1,2 GB de requirements.txt; sin GPU, usa ese.
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.14.0+cu130
+laya==0.3.5
