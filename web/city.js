@@ -1,4 +1,4 @@
-import { $, svg, watchModel } from "./common.js";
+import { $, modeToggle, showSpeed, svg, watchModel } from "./common.js";
 import { nearestAngle } from "./lib.js";
 
 const X = i => 150 + i * 150, Y = j => 70 + j * 125; // Cruces en unidades del viewBox.
@@ -9,14 +9,19 @@ const ROAD = 34;
 const HEADING = { este: 0, sur: 90, oeste: 180, norte: -90 };
 const STEP = { norte: [0, -1], sur: [0, 1], oeste: [-1, 0], este: [1, 0] };
 const HOUSES = ["#ffc53d", "#4fa8f0", "#3ddba8", "#ff9b8f", "#b8a4f5"];
-const PAUSE = matchMedia("(prefers-reduced-motion: reduce)").matches ? 150 : 800; // ms entre turnos.
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Real-Time: el taxi recorre cada calle en 120 ms y Laya decide el turno siguiente sin pausa.
+// Paso a paso: 700 ms por calle y una pausa para leer cada decisión.
+const pace = () => mode() === "pasos" ? { pause: REDUCED ? 150 : 800, move: ".7s" } : { pause: REDUCED ? 0 : 130, move: ".12s" };
 const percent = new Intl.NumberFormat("es", { style: "percent", maximumFractionDigits: 1 });
 const seconds = new Intl.NumberFormat("es", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const city = $("#city"), statusLine = $("#status");
 let map, view, selected = null, running = false, busy = false, angle = 0, lights = {};
+let run = { inference: 0, count: 0 };  // Inferencia acumulada del viaje, para el indicador de velocidad.
 
 watchModel($("#model"));
+const mode = modeToggle($("#mode"));
 ({ map, view } = await (await fetch("/api/city")).json());
 angle = HEADING[view.heading];
 const ACTIONS = map.actions;
@@ -152,6 +157,7 @@ function instantly(draw) {
 function placeCar() {
   const [i, j] = view.car;
   angle = nearestAngle(angle, HEADING[view.heading]);
+  layers.car.g.style.transitionDuration = pace().move;
   layers.car.g.style.transform = `translate(${X(i)}px, ${Y(j)}px) rotate(${angle}deg)`;
   layers.car.rider.style.display = view.onboard ? "" : "none";
 }
@@ -266,14 +272,19 @@ async function step() {
     if (!response.ok) throw new Error(data.error);
     view = data.view;
     selected = null;
-    if (view.done) running = false;
+    run.inference += data.record.elapsed;
+    run.count += 1;
+    if (view.done) {
+      running = false;
+      showSpeed($("#speed"), run.inference, run.count, "decisión");
+    }
   } catch (error) {
     running = false;
     setStatus(`El taxi no se movió: ${error.message}`);
   } finally {
     busy = false;
     render();
-    if (running) setTimeout(step, PAUSE);
+    if (running) setTimeout(step, pace().pause);
   }
 }
 
@@ -290,6 +301,8 @@ async function restart(shuffle) {
   const response = await fetch(shuffle ? "/api/city/shuffle" : "/api/city/reset", { method: "POST" });
   ({ view } = await response.json());
   selected = null;
+  run = { inference: 0, count: 0 };
+  $("#speed").hidden = true;
   angle = HEADING[view.heading];
   instantly(render);
   setStatus("");
