@@ -72,7 +72,7 @@ function showIdle(title) {
     el("h3", {}, title ?? (view.peticion || "Escribe una petición o toca un ejemplo")),
     el("p", {}, view.done && view.llamadas.length
       ? `${view.llamadas.length} llamadas · ${view.reason}`
-      : "Laya elige servidor y herramienta; las reglas encadenan los argumentos"))));
+      : "El modelo elige servidor y herramienta; las reglas encadenan los argumentos"))));
 }
 
 function step(n, title, badge, body, wide) {
@@ -113,7 +113,7 @@ function barsBlock(probabilities, winner, label) {
 function callsBlock(record) {
   return el("div", { class: "calls" }, ...record.llamadas.map(call =>
     el("div", { class: call.regla ? "call rule" : "call" }, el("code", {}, call.id),
-      el("small", {}, call.regla ? `hace falta ${call.porque}` : "lo eligió Laya"))));
+      el("small", {}, call.regla ? `hace falta ${call.porque}` : "lo eligió el modelo"))));
 }
 
 async function showRecord(record, animate) {
@@ -134,7 +134,7 @@ async function showRecord(record, animate) {
                         el("code", {}, `${index + 1}. ${call.id}`)))), true));
   $("#stage").replaceChildren(
     el("div", { class: "who-line" }, el("span", { class: "turnpill" }, `Vuelta ${record.vuelta}`),
-      el("span", { class: "mode" }, `Laya decidió en ${ms(record.elapsed)}`)),
+      el("span", { class: "mode" }, `El modelo decidió en ${ms(record.elapsed)}`)),
     el("ol", { class: "steps" }, ...steps));
   if (!animate) return steps.forEach(reveal);
   steps.forEach(node => node.classList.add("pending"));
@@ -147,7 +147,7 @@ async function showRecord(record, animate) {
   }
 }
 
-/* Bucle: petición → vueltas de decisión hasta que Laya la da por cubierta. */
+/* Bucle: petición → vueltas de decisión hasta que el modelo la da por cubierta. */
 
 async function trace() {
   if (running) return;
@@ -165,7 +165,7 @@ async function trace() {
     ({ view } = result);
     renderCatalog();
     renderRoute();
-    showIdle("Laya lee la petición…");
+    showIdle("El modelo lee la petición…");
     while (running && !view.done) {
       const step = await fetch("/api/tools/step", { method: "POST" });
       const payload = await step.json();

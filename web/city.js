@@ -10,7 +10,7 @@ const HEADING = { este: 0, sur: 90, oeste: 180, norte: -90 };
 const STEP = { norte: [0, -1], sur: [0, 1], oeste: [-1, 0], este: [1, 0] };
 const HOUSES = ["#ffc53d", "#4fa8f0", "#3ddba8", "#ff9b8f", "#b8a4f5"];
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
-// Real-Time: el taxi recorre cada calle en 120 ms y Laya decide el turno siguiente sin pausa.
+// Real-Time: el taxi recorre cada calle en 120 ms y el modelo decide el turno siguiente sin pausa.
 // Paso a paso: 700 ms por calle y una pausa para leer cada decisión.
 const pace = () => mode() === "pasos" ? { pause: REDUCED ? 150 : 800, move: ".7s" } : { pause: REDUCED ? 0 : 130, move: ".12s" };
 const percent = new Intl.NumberFormat("es", { style: "percent", maximumFractionDigits: 1 });

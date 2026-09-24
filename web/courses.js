@@ -1,7 +1,7 @@
 import { $, modeToggle, showSpeed, watchModel } from "./common.js";
 
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
-// Real-Time: cada curso aparece en cuanto Laya lo elige. Paso a paso: los cuatro pasos del bucle, a ritmo de lectura.
+// Real-Time: cada curso aparece en cuanto el modelo lo elige. Paso a paso: los cuatro pasos del bucle, a ritmo de lectura.
 const pace = () => mode() === "pasos" ? { reveal: REDUCED ? 40 : 330, hold: REDUCED ? 80 : 900 }
                                       : { reveal: 0, hold: REDUCED ? 0 : 60 };
 const LEVEL = { "básico": "--basico", "intermedio": "--intermedio", "avanzado": "--avanzado" };
@@ -148,7 +148,7 @@ async function showRecord(record, animate) {
   ];
   $("#stage").replaceChildren(
     el("div", { class: "who-line" }, el("span", { class: "turnpill" }, `Paso ${record.paso}`),
-      el("span", { class: "mode" }, `Laya decidió en ${ms(record.elapsed)}`)),
+      el("span", { class: "mode" }, `El modelo decidió en ${ms(record.elapsed)}`)),
     el("ol", { class: "steps" }, ...steps));
   if (!animate) return steps.forEach(reveal);
   steps.forEach(node => node.classList.add("pending"));
@@ -161,7 +161,7 @@ async function showRecord(record, animate) {
   }
 }
 
-/* Bucle: estado → candidatos → Laya → curso → estado nuevo. */
+/* Bucle: estado → candidatos → modelo → curso → estado nuevo. */
 
 async function build() {
   if (running || view.done) return;

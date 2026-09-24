@@ -15,6 +15,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const range = (from, to, step) => Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
 
 watchModel($("#model"));
+fetch("/api/status").then(r => r.json()).then(status => { $("#api-note").hidden = status.device !== "api"; }).catch(() => {});
 const mode = modeToggle($("#mode"));
 $("#ramp").style.background = `linear-gradient(90deg, ${RAMP.join(", ")})`;
 
@@ -105,7 +106,7 @@ function run() {
   };
 }
 
-// Revela un país cada REVEAL ms: lo resalta, lo colorea y muestra en el panel el texto que leyó Laya.
+// Revela un país cada REVEAL ms: lo resalta, lo colorea y muestra en el panel el texto que leyó el modelo.
 async function reveal(gen) {
   if (revealing === gen) return;
   revealing = gen;
@@ -122,7 +123,7 @@ async function reveal(gen) {
 
 function finishIfIdle(gen) {
   if (gen !== generation || source || revealQueue.length || revealing === gen) return;
-  $("#progress").hidden = true;  // Solo se ve mientras Laya evalúa o la página revela.
+  $("#progress").hidden = true;  // Solo se ve mientras el modelo evalúa o la página revela.
   if (doneSeconds != null) showSpeed($("#speed"), doneSeconds, countries.length, "país");
 }
 
@@ -189,7 +190,7 @@ function select(id) {
   refreshDetail();
 }
 
-// El panel muestra exactamente el texto que lee Laya: explica la puntuación sin adivinar.
+// El panel muestra exactamente el texto que lee el modelo: explica la puntuación sin adivinar.
 function refreshDetail() {
   if (!selected) return;
   const country = byId[selected], score = scores[selected];
