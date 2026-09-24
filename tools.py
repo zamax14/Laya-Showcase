@@ -38,64 +38,64 @@ SERVERS = {
 
 TOOLS = [
     {"id": "ver_agenda", "servidor": "agenda", "necesita": [], "produce": ["eventos"],
-     "descripcion": "Lee los eventos del calendario en un rango de fechas.",
+     "descripcion": "Consulta los eventos de una o varias agendas en fechas concretas; muestra compromisos y ocupación, pero no reserva nada.",
      "criterio": "agenda: mi calendario, qué tengo, eventos de un día o una semana"},
     {"id": "buscar_hueco", "servidor": "agenda", "necesita": ["eventos"], "produce": ["hueco"],
-     "descripcion": "Encuentra un hueco libre común entre varias agendas.",
+     "descripcion": "Compara agendas ya consultadas y propone una franja libre común para los asistentes; todavía no crea la cita.",
      "criterio": "hueco: encontrar una hora en la que todos estén libres"},
     {"id": "crear_evento", "servidor": "agenda", "necesita": ["hueco", "contacto"], "produce": [],
-     "descripcion": "Crea una reunión con fecha, hora y asistentes.",
+     "descripcion": "Registra una reunión con fecha, hora y asistentes una vez conocidos el hueco libre y la ficha del contacto.",
      "criterio": "agendar: crear una reunión o cita con asistentes"},
     {"id": "listar_correos", "servidor": "correo", "necesita": [], "produce": ["correos"],
-     "descripcion": "Lista los correos recientes con remitente, asunto y fecha.",
+     "descripcion": "Enumera mensajes recientes con remitente, asunto y fecha; permite localizar uno, sin leer todavía su cuerpo.",
      "criterio": "bandeja: correos recientes, quién escribió, últimos mensajes"},
     {"id": "leer_correo", "servidor": "correo", "necesita": ["correos"], "produce": ["texto_correo"],
-     "descripcion": "Abre un correo de la lista y devuelve su texto completo.",
+     "descripcion": "Abre un mensaje identificado en la bandeja y devuelve el contenido íntegro para responder qué pide o dice.",
      "criterio": "leer correo: el contenido de un mensaje, qué dice"},
     {"id": "enviar_correo", "servidor": "correo", "necesita": ["contacto"], "produce": [],
-     "descripcion": "Envía un correo a un contacto.",
+     "descripcion": "Prepara el envío de un mensaje a un contacto identificado; en esta demo la llamada es simulada y visible.",
      "criterio": "enviar correo: escribir y mandar un mensaje a alguien"},
     {"id": "buscar_cliente", "servidor": "crm", "necesita": [], "produce": ["contacto"],
-     "descripcion": "Busca un cliente o una persona en el CRM por su nombre.",
+     "descripcion": "Localiza por nombre a una persona o empresa y devuelve su ficha; también aporta el contacto para otras llamadas.",
      "criterio": "ficha de cliente: encontrar una persona o empresa en el CRM por su nombre"},
     {"id": "ver_oportunidades", "servidor": "crm", "necesita": ["contacto"], "produce": ["oportunidades"],
-     "descripcion": "Lista las oportunidades abiertas de un cliente y su importe.",
+     "descripcion": "Consulta oportunidades comerciales abiertas de un cliente, sus etapas e importes; no devuelve ventas facturadas.",
      "criterio": "oportunidades: negocios abiertos de un cliente, importe del embudo"},
     {"id": "registrar_nota", "servidor": "crm", "necesita": ["contacto"], "produce": [],
-     "descripcion": "Deja una nota escrita en la ficha de un cliente.",
+     "descripcion": "Añade una nota a la ficha de un cliente identificado, por ejemplo un hallazgo que el usuario pide conservar.",
      "criterio": "nota: dejar información escrita en la ficha del cliente"},
     {"id": "mover_oportunidad", "servidor": "crm", "necesita": ["oportunidades"], "produce": [],
-     "descripcion": "Cambia de etapa una oportunidad del embudo de ventas.",
+     "descripcion": "Modifica la etapa de una oportunidad comercial ya identificada; no sirve para consultar su importe.",
      "criterio": "etapa: mover una oportunidad a otra fase del embudo"},
     {"id": "buscar_archivo", "servidor": "archivos", "necesita": [], "produce": ["documento"],
-     "descripcion": "Busca documentos por nombre o contenido en la unidad compartida.",
+     "descripcion": "Localiza contratos, informes u otros documentos internos por nombre o contenido en la unidad compartida.",
      "criterio": "buscar archivo: documentos, contratos, informes de la unidad compartida"},
     {"id": "leer_documento", "servidor": "archivos", "necesita": ["documento"], "produce": ["texto_documento"],
-     "descripcion": "Extrae el texto de un documento encontrado.",
+     "descripcion": "Abre un archivo ya localizado y extrae su contenido para responder preguntas sobre cláusulas o detalles.",
      "criterio": "leer archivo: el texto dentro de un documento"},
     {"id": "crear_documento", "servidor": "archivos", "necesita": [], "produce": ["documento"],
-     "descripcion": "Guarda un documento nuevo con lo reunido en los pasos anteriores.",
+     "descripcion": "Crea un documento nuevo para conservar información ya reunida, únicamente si el usuario pide guardarlo.",
      "criterio": "archivo nuevo: guardar un informe o documento"},
     {"id": "consultar_sql", "servidor": "datos", "necesita": [], "produce": ["tabla"],
-     "descripcion": "Ejecuta una consulta SQL sobre el almacén de datos de la empresa.",
+     "descripcion": "Consulta tablas del almacén de datos para obtener registros de ventas, ingresos u otras cifras de negocio.",
      "criterio": "base de datos: ventas, ingresos, cifras del almacén de datos"},
     {"id": "resumir_metricas", "servidor": "datos", "necesita": ["tabla"], "produce": ["metricas"],
-     "descripcion": "Calcula totales, medias y variación de una tabla.",
+     "descripcion": "Calcula sumas, promedios y variaciones a partir de una tabla obtenida previamente.",
      "criterio": "totales: suma, media y variación de una tabla"},
     {"id": "graficar", "servidor": "datos", "necesita": ["tabla"], "produce": ["grafica"],
-     "descripcion": "Dibuja una gráfica a partir de una tabla.",
+     "descripcion": "Construye una gráfica a partir de datos tabulares consultados, para visualizar tendencias o comparaciones.",
      "criterio": "gráfica: dibujar una tabla"},
     {"id": "buscar_ticket", "servidor": "soporte", "necesita": [], "produce": ["tickets"],
-     "descripcion": "Busca incidencias de soporte por cliente, estado o fecha.",
+     "descripcion": "Busca tickets de soporte ya existentes por cliente, estado o fecha; no abre una incidencia nueva.",
      "criterio": "incidencias: tickets de soporte existentes de un cliente"},
     {"id": "crear_ticket", "servidor": "soporte", "necesita": ["contacto"], "produce": [],
-     "descripcion": "Abre una incidencia de soporte para un cliente.",
+     "descripcion": "Registra una incidencia nueva vinculada a un contacto del CRM, después de conocer el problema.",
      "criterio": "ticket nuevo: abrir una incidencia de soporte"},
     {"id": "buscar_web", "servidor": "web", "necesita": [], "produce": ["enlaces"],
-     "descripcion": "Busca en internet y devuelve enlaces con un resumen de cada uno.",
+     "descripcion": "Busca información pública en internet y devuelve enlaces con resúmenes breves de cada resultado.",
      "criterio": "buscar en internet: qué se dice en la red, competencia, información pública"},
     {"id": "abrir_pagina", "servidor": "web", "necesita": ["enlaces"], "produce": ["pagina"],
-     "descripcion": "Abre uno de los enlaces encontrados y devuelve su contenido.",
+     "descripcion": "Abre un resultado de búsqueda web y devuelve el contenido de la página para revisar sus detalles.",
      "criterio": "abrir enlace: el contenido de una página encontrada"},
 ]
 CATALOG = {t["id"]: t for t in TOOLS}
@@ -210,7 +210,12 @@ class Route:
         return added
 
     def turn(self, predict):
-        """Una vuelta: ¿ya basta? → servidor → herramienta → prerrequisitos."""
+        """Una vuelta: ¿ya basta? → servidor → herramienta → prerrequisitos.
+
+        Cada herramienta llega con su criterio corto y su descripción completa: medido sobre las 8 de
+        ejemplo, las llamadas de más bajan de 6 a 4 con el mismo acierto. Alargar las preguntas, en
+        cambio, empeoraba (15 → 12 de 23).
+        """
         if self.done:
             raise LookupError("La ruta ya está trazada; escribe otra petición para empezar.")
         state = self.state()
@@ -233,7 +238,7 @@ class Route:
         if not inside:
             return self.finish(f"Ya se llamó a todo lo de {server['nombre']}", state, stop, started, server)
         answer = predict(state, {"herramienta": {"type": "choice", "instructions": QUESTIONS["herramienta"],
-                                                 "criteria": {t["id"]: t["criterio"] for t in inside}}})["answers"]["herramienta"]
+                                                 "criteria": {t["id"]: f"{t['criterio']}. {t['descripcion']}" for t in inside}}})["answers"]["herramienta"]
         ids = [t["id"] for t in inside]
         probabilities = distribution(answer, ids)
         tool = CATALOG[answer["choice"]]
