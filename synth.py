@@ -231,22 +231,34 @@ def main():
     parser = argparse.ArgumentParser(description="Genera tickets sintéticos etiquetados y los añade a un CSV.")
     parser.add_argument("--prompt", default=DEFAULT_CONTEXT,
                         help="contexto: sector, tipo de texto (tickets, incidencias, reportes…), tono")
+    parser.add_argument("--contextos", type=Path,
+                        help="archivo con un contexto por línea; genera --n filas para cada uno, en orden")
     parser.add_argument("--n", type=int, default=72, help="filas aproximadas; se reparten entre 36 combinaciones")
     parser.add_argument("--backend", choices=("ollama", "openrouter"), default="ollama")
     # qwen3.5:9b no sirve: sin razonar ignora el esquema y razonando tardó 148 s en devolver una respuesta vacía.
     parser.add_argument("--modelo", help="por defecto gemma3:12b en Ollama y openai/gpt-5.6-luna en OpenRouter")
     parser.add_argument("--ollama", default="http://localhost:11434", help="URL del servidor de Ollama")
     parser.add_argument("--salida", type=Path, default=CSV_PATH)
+    parser.add_argument("--hilos", type=int, help="llamadas simultáneas (Ollama 2, OpenRouter 8)")
     parser.add_argument("--categoria", action="append", choices=list(CATEGORIES),
                         help="solo esta categoría (se puede repetir); por defecto, las seis")
     args = parser.parse_args()
     llm = (Ollama(args.modelo or "gemma3:12b", args.ollama) if args.backend == "ollama"
            else OpenRouter(args.modelo or "openai/gpt-5.6-luna"))
-    started = time.time()
-    rows, cost = generate(llm, args.n, args.prompt, args.salida, categories=args.categoria)
-    counts = {c: sum(r["categoria"] == c for r in rows) for c in CATEGORIES}
-    print(f"{len(rows)} filas nuevas en {args.salida} ({len(read(args.salida))} en total) en {time.time() - started:.0f} s"
-          + (f" por US${cost:.3f}" if cost else "") + f" · por categoría: {counts}")
+    llm.parallel = args.hilos or llm.parallel
+    contexts = ([line.strip() for line in args.contextos.read_text(encoding="utf-8").splitlines() if line.strip()]
+                if args.contextos else [args.prompt])
+    total_rows, total_cost = 0, 0.0
+    for i, context in enumerate(contexts, 1):
+        started = time.time()
+        rows, cost = generate(llm, args.n, context, args.salida, categories=args.categoria)
+        total_rows, total_cost = total_rows + len(rows), total_cost + cost
+        counts = {c: sum(r["categoria"] == c for r in rows) for c in CATEGORIES}
+        print(f"[{i}/{len(contexts)}] {len(rows)} filas nuevas en {args.salida} ({len(read(args.salida))} en total) en "
+              f"{time.time() - started:.0f} s" + (f" por US${cost:.3f}" if cost else "") + f" · por categoría: {counts}",
+              flush=True)
+    if len(contexts) > 1:
+        print(f"Total: {total_rows} filas" + (f" por US${total_cost:.2f}" if total_cost else ""))
 
 
 if __name__ == "__main__":
