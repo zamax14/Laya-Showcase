@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 HF_TOKEN
 openrouter
+OPENAI
