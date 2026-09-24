@@ -2,7 +2,7 @@
 import unittest
 
 import tickets
-from tickets import CATEGORIES, PRIORITIES, TICKETS, assign, light, public
+from tickets import CATEGORIES, PRIORITIES, TICKETS, assign, light, public, ticket_state
 
 
 def answer(category="redes", confidence=.9, score=2.2):
@@ -27,6 +27,18 @@ class DeskChecks(unittest.TestCase):
                 self.assertIn(category, CATEGORIES)
                 self.assertEqual(CATEGORIES[category][1], expert, t["id"])  # El experto es el responsable de la categoría.
             self.assertNotIn("referencia", public(t))
+            self.assertNotIn(str(t["referencia"]), str(ticket_state(t)))
+
+    def test_descriptions_do_not_leak_the_answer(self):
+        # Un benchmark que dice la respuesta en el texto no mide nada.
+        for t in TICKETS:
+            text = t["descripcion"].lower()
+            self.assertFalse([h for h in tickets.LEAK_HINTS if h in text], t["id"])
+            category = t["referencia"][0]
+            if category:
+                self.assertNotIn(CATEGORIES[category][0].lower(), text, t["id"])
+            self.assertIsInstance(t["bloquea"], bool)
+            self.assertNotIn("bloquea", public(t))
 
     def test_every_category_has_an_expert(self):
         self.assertEqual({owner for _, owner, _ in CATEGORIES.values()}, set(tickets.EXPERTS))

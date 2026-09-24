@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mesa de ayuda · Laya Showcase</title>
+  <title>Mesa de ayuda · Arbiter</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%236c4ee3'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <style>
@@ -25,7 +25,9 @@
     .queue h2, .board h2 { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: baseline; }
     .queue h2 span { color: var(--muted); font-size: 15px; }
     .queue ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 560px; overflow: auto; }
-    .queue li { padding: 10px 12px; border-radius: 14px; background: var(--bg); transition: opacity .3s ease, transform .3s ease; }
+    .queue li { border-radius: 14px; background: var(--bg); transition: opacity .3s ease, transform .3s ease; }
+    .queue li button { display: block; width: 100%; padding: 10px 12px; border: 2px solid transparent; border-radius: 14px; background: none; text-align: left; cursor: pointer; }
+    .queue li button:hover, .queue li button[aria-current="true"] { border-color: var(--violet); }
     .queue li.leaving { opacity: 0; transform: translateX(24px); }
     .queue li p { font-weight: 800; line-height: 1.25; }
     .queue li small { color: var(--muted); font-weight: 600; }
@@ -98,19 +100,42 @@
     .card .row b { margin-left: auto; }
     .card p { font-weight: 800; line-height: 1.25; margin: 4px 0 8px; }
     .card .mini { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .below { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; align-items: start; }
+    .below h2 { margin-bottom: 6px; }
+    .below > section > p { margin-bottom: 14px; color: var(--ink-2); }
+    .people { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .person-card { display: flex; width: 100%; gap: 10px; padding: 12px; border: 2px solid var(--line); border-radius: 14px; background: var(--bg); text-align: left; cursor: pointer; }
+    .person-card:hover, .person-card[aria-current="true"] { border-color: var(--violet); background: var(--violet-soft); }
+    .person-card b, .person-card small { display: block; }
+    .person-card small { color: var(--ink-2); line-height: 1.3; }
+    .person-detail { margin-top: 14px; padding: 16px; border-radius: 14px; background: var(--bg); }
+    .person-detail h3 { margin-bottom: 8px; }
+    .person-detail p + p { margin-top: 8px; }
+    .answer-scroll { overflow-x: auto; }
+    .answer-key { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .answer-key th, .answer-key td { padding: 9px 7px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .answer-key th { color: var(--ink-2); font-weight: 900; }
+    .answer-key tr:last-child td { border-bottom: 0; }
+    .answer-key button { padding: 0; border: 0; background: none; color: var(--violet-deep); text-align: left; font-weight: 900; cursor: pointer; }
+    .answer-key button:hover { text-decoration: underline; }
+    .answer-key .match { color: #126b50; font-weight: 900; }
+    .answer-key .mismatch { color: var(--coral-text); font-weight: 900; }
+    .answer-key .unknown { color: var(--muted); font-style: italic; }
     @keyframes pop { from { transform: scale(.9); opacity: 0; } }
 
     @media (max-width: 980px) {
       .top { grid-template-columns: 1fr; }
       .queue ol { max-height: 260px; }
       .steps { grid-template-columns: 1fr; }
+      .below { grid-template-columns: 1fr; }
     }
+    @media (max-width: 560px) { .people { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/"><b>Laya Showcase</b><span>Mesa de ayuda</span></a>
-    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando Laya…</span></p>
+    <a class="brand" href="/"><b>Arbiter</b><span>Mesa de ayuda</span></a>
+    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando modelo…</span></p>
   </header>
   <main>
     <div class="head">
@@ -125,7 +150,7 @@
         </div>
         <span id="mode"></span>
         <button class="btn primary" id="assign" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Asignar con Laya</button>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Asignar tickets</button>
         <button class="btn" id="reset" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>Reiniciar</button>
       </div>
@@ -148,6 +173,22 @@
       </h2>
       <div class="columns" id="columns"></div>
     </section>
+    <div class="below">
+      <section class="panel" aria-labelledby="team-title">
+        <h2 id="team-title">Equipo de especialistas</h2>
+        <p>Selecciona a una persona para ver qué atiende y cuándo deriva un caso.</p>
+        <div class="people" id="people"></div>
+        <div class="person-detail" id="person-detail" aria-live="polite"></div>
+      </section>
+      <section class="panel" aria-labelledby="answers-title">
+        <h2 id="answers-title">Respuestas correctas</h2>
+        <p>Referencia humana para evaluar al modelo. El ticket ambiguo no tiene categoría ni experto definidos; esas respuestas nunca se envían al modelo.</p>
+        <div class="answer-scroll"><table class="answer-key">
+          <thead><tr><th>Ticket</th><th>Categoría</th><th>Prioridad</th><th>Especialista</th></tr></thead>
+          <tbody id="answers"></tbody>
+        </table></div>
+      </section>
+    </div>
   </main>
   <script type="module" src="tickets.js"></script>
 </body>

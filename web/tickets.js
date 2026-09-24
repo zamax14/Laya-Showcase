@@ -16,6 +16,7 @@ const desk = await (await fetch("/api/tickets")).json();
 const byId = Object.fromEntries(desk.tickets.map(t => [t.id, t]));
 let assigned = { ...desk.asignados };
 let group = "categoria", source = null, queue = [], playing = false, current = null, selected = null;
+let selectedExpert = Object.keys(desk.expertos)[0];
 let run = null;  // Tanda en curso: suma de inferencia y tickets, para el indicador de velocidad.
 const mode = modeToggle($("#mode"));
 
@@ -43,6 +44,8 @@ showIdle();
 function renderAll() {
   renderQueue();
   renderBoard();
+  renderPeople();
+  renderAnswers();
   renderCounters();
   updateButtons();
 }
@@ -51,10 +54,68 @@ function renderQueue() {
   const items = pending();
   $("#queue-count").textContent = items.length;
   $("#queue").replaceChildren(...(items.length
-    ? items.map(t => el("li", { "data-id": t.id }, el("span", { class: "tid" }, t.id), el("p", {}, t.titulo),
-                        el("small", {}, `${t.solicitante}, ${t.area}`)))
+    ? items.map(t => el("li", { "data-id": t.id }, el("button", { type: "button", "data-id": t.id,
+                        "aria-current": String(t.id === selected) }, el("span", { class: "tid" }, t.id),
+                        el("p", {}, t.titulo), el("small", {}, `${t.solicitante}, ${t.area}`))))
     : [el("li", { class: "empty" }, "Todo asignado")]));
 }
+
+function renderPeople() {
+  $("#people").replaceChildren(...Object.entries(desk.expertos).map(([key, person]) =>
+    el("button", { type: "button", class: "person-card", "data-expert": key,
+                   "aria-current": String(key === selectedExpert) }, avatar(key),
+      el("span", {}, el("b", {}, person.nombre), el("small", {}, person.especialidad)))));
+  const person = desk.expertos[selectedExpert];
+  $("#person-detail").replaceChildren(
+    el("h3", {}, person.nombre),
+    el("p", {}, el("b", {}, "Especialidad: "), person.especialidad),
+    el("p", {}, el("b", {}, "Atiende: "), person.atiende),
+    el("p", {}, el("b", {}, "Deriva: "), person.deriva));
+}
+
+function answerCell(value, correct) {
+  const label = value ?? "Sin referencia";
+  return el("span", { class: value == null ? "unknown" : correct == null ? "" : correct ? "match" : "mismatch" },
+    correct == null || value == null ? label : `${correct ? "✓" : "×"} ${label}`);
+}
+
+function renderAnswers() {
+  $("#answers").replaceChildren(...desk.tickets.map(t => {
+    const ref = desk.referencias[t.id], result = assigned[t.id];
+    return el("tr", {},
+      el("td", {}, el("button", { type: "button", "data-id": t.id }, `${t.id} · ${t.titulo}`)),
+      el("td", {}, answerCell(ref.categoria == null ? null : desk.categorias[ref.categoria].nombre,
+                               result && ref.categoria != null ? result.categoria.choice === ref.categoria : null)),
+      el("td", {}, answerCell(desk.prioridades[ref.prioridad], result ? result.prioridad.choice === ref.prioridad : null)),
+      el("td", {}, answerCell(ref.experto == null ? null : desk.expertos[ref.experto].nombre,
+                               result && ref.experto != null ? result.experto === ref.experto : null)));
+  }));
+}
+
+function selectTicket(id) {
+  if (playing || source) return;
+  selected = id;
+  const ticket = byId[id], result = assigned[id];
+  if (result) showResult(ticket, result, { label: "Revisión" });
+  else showPreview(ticket);
+  renderQueue();
+  renderBoard();
+}
+
+$("#queue").addEventListener("click", event => {
+  const button = event.target.closest("button[data-id]");
+  if (button) selectTicket(button.dataset.id);
+});
+$("#answers").addEventListener("click", event => {
+  const button = event.target.closest("button[data-id]");
+  if (button) selectTicket(button.dataset.id);
+});
+$("#people").addEventListener("click", event => {
+  const button = event.target.closest("button[data-expert]");
+  if (!button) return;
+  selectedExpert = button.dataset.expert;
+  renderPeople();
+});
 
 function renderCounters() {
   $("#pending-count").textContent = pending().length + (current ? 1 : 0);
@@ -104,10 +165,7 @@ document.querySelector(".board .tabs").addEventListener("click", event => {
 
 $("#columns").addEventListener("click", event => {
   const target = event.target.closest(".card");
-  if (!target || playing) return;
-  selected = target.dataset.id;
-  showResult(byId[selected], assigned[selected], { label: "Revisión" });
-  renderBoard();
+  if (target) selectTicket(target.dataset.id);
 });
 
 /* Escenario. */
@@ -116,8 +174,17 @@ function showIdle(title) {
   const waiting = pending().length;
   $("#stage").replaceChildren(el("div", { class: "idle" }, el("div", {},
     el("h3", {}, title ?? (waiting ? `${waiting} tickets esperando` : "Todo asignado")),
-    el("p", {}, waiting ? "Laya lee cada ticket, decide categoría y prioridad, y lo pasa al experto responsable." : "Toca una tarjeta para revisar su análisis."),
+    el("p", {}, waiting ? "El modelo lee cada ticket, decide categoría y prioridad, y lo pasa al experto responsable." : "Toca una tarjeta para revisar su análisis."),
     legend())));
+}
+
+function showPreview(t) {
+  $("#stage").replaceChildren(
+    el("div", { class: "who-line" }, el("span", { class: "tid" }, t.id),
+      el("span", { class: "mode" }, "Pendiente de clasificación")),
+    el("div", { class: "ticket-card" }, el("h3", {}, t.titulo), el("p", {}, t.descripcion),
+      el("small", {}, `Solicitante: ${t.solicitante} · Área: ${t.area}`)),
+    el("p", { class: "muted" }, "La referencia humana aparece en la tabla de respuestas correctas. El modelo todavía no ha evaluado este ticket."));
 }
 
 function legend() {
@@ -180,7 +247,7 @@ async function showResult(t, r, { animate = false, label } = {}) {
   ];
   $("#stage").replaceChildren(
     el("div", { class: "who-line" }, el("span", { class: "tid" }, t.id),
-      el("span", { class: "mode" }, label ?? `Laya decidió en ${ms(r.segundos)}`)),
+      el("span", { class: "mode" }, label ?? `El modelo decidió en ${ms(r.segundos)}`)),
     el("div", { class: "ticket-card" }, el("h3", {}, t.titulo), el("p", {}, t.descripcion), el("small", {}, `${t.solicitante}, ${t.area}`)),
     el("ol", { class: "steps" }, ...steps));
   if (!animate) return steps.forEach(reveal);
@@ -211,13 +278,14 @@ async function play() {
     renderQueue();
     await showResult(byId[r.id], r, { animate: slow });
     if (slow) await sleep(HOLD);
-    else await frame();  // Un fotograma por ticket: se ve pasar cada uno sin frenar a Laya.
+    else await frame();  // Un fotograma por ticket: se ve pasar cada uno sin frenar al modelo.
     run.inference += r.segundos;
     run.count += 1;
     assigned[r.id] = r;
     current = null;
     selected = null;
     renderBoard(r.id);
+    renderAnswers();
     renderQueue();
     renderCounters();
   }
@@ -233,7 +301,7 @@ function finished() {
 $("#assign").addEventListener("click", () => {
   if (source || !pending().length) return;
   setStatus("");
-  showIdle("Laya empieza a leer…");
+  showIdle("El modelo empieza a leer…");
   run = { inference: 0, count: 0 };
   $("#speed").hidden = true;
   source = new EventSource("/api/tickets/assign");
