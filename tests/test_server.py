@@ -163,7 +163,12 @@ class ServerChecks(unittest.TestCase):
         self.get("/api/tickets/reset", "POST")
         desk = json.loads(self.get("/api/tickets")[2])
         self.assertEqual(len(desk["tickets"]), 20)
-        self.assertTrue(all("referencia" not in t for t in desk["tickets"]))  # La respuesta esperada no llega a la página.
+        self.assertTrue(all("referencia" not in t for t in desk["tickets"]))  # Las referencias van por separado.
+        self.assertEqual(len(desk["referencias"]), 20)
+        self.assertEqual(desk["referencias"]["T-1001"],
+                         {"categoria": "hardware", "prioridad": "alta", "experto": "lucia"})
+        self.assertEqual(len(desk["expertos"]), 6)
+        self.assertTrue(all(e["atiende"] and e["deriva"] for e in desk["expertos"].values()))
         self.assertEqual(desk["asignados"], {})
         events = self.events(path="/api/tickets/assign")
         results = [data for kind, data in events if kind == "ticket"]
@@ -174,6 +179,43 @@ class ServerChecks(unittest.TestCase):
         self.assertEqual((first["confianza"], first["semaforo"]), (70.0, "amarillo"))
         self.assertEqual(self.events(path="/api/tickets/assign"), [("done", 20)])  # Nada pendiente.
         self.assertEqual(json.loads(self.get("/api/tickets/reset", "POST")[2])["asignados"], {})
+
+    def test_benchmark_streams_every_ticket_and_a_summary(self):
+        events = self.events(path="/api/benchmark/stream?models=laya")
+        kinds = [kind for kind, _ in events]
+        self.assertEqual(kinds[0], "start")
+        self.assertEqual(events[0][1]["suite"], "tickets-v2")
+        self.assertEqual(kinds.count("row"), 20)
+        self.assertEqual(events[-1], ("done", 1))
+        summary = next(data for kind, data in events if kind == "summary")
+        self.assertEqual((summary["category_total"], summary["priority_total"], summary["blocking_total"]), (19, 20, 20))
+        self.assertEqual(summary["rows"][0]["expected_category"], "hardware")
+        self.assertEqual(sum(band["total"] for band in summary["lights"].values()), 19)
+        self.assertLessEqual(summary["p50_latency_ms"], summary["p95_latency_ms"])
+
+    def test_model_cookie_selects_an_independent_app(self):
+        models = {"laya": App(FakeModel(), prior=defaultdict(float)),
+                  "kev": App(FakeModel(), prior=defaultdict(float))}
+        models["laya"].model.device, released = "cuda", []
+        models["laya"].model.release = lambda: released.append("laya")
+        server = serve(models, port=0)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        try:
+            request = urllib.request.Request(base + "/api/model?name=kev", method="POST")
+            with urllib.request.urlopen(request) as response:
+                cookie = response.headers["Set-Cookie"].split(";", 1)[0]
+            request = urllib.request.Request(base + "/api/status", headers={"Cookie": cookie})
+            with urllib.request.urlopen(request) as response:
+                self.assertEqual(json.load(response)["selected"], "kev")
+            request = urllib.request.Request(base + "/api/city/step", method="POST", headers={"Cookie": cookie})
+            urllib.request.urlopen(request).close()
+            self.assertEqual(released, ["laya"])  # Kev entra en la GPU: Laya la deja libre.
+            self.assertEqual(models["kev"].trip.view()["tick"], 1)
+            self.assertEqual(models["laya"].trip.view()["tick"], 0)
+        finally:
+            server.shutdown()
+            server.server_close()
 
 
 if __name__ == "__main__":

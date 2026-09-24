@@ -4,9 +4,14 @@
     python server.py --port 9000 --no-browser
 """
 import argparse
+from collections import defaultdict
+from datetime import datetime, timezone
+from http.cookies import SimpleCookie
 import json
 import mimetypes
 import queue
+import signal
+import sys
 import threading
 import time
 import webbrowser
@@ -15,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import benchmark
 from atlas import MAX_QUERY, Evaluator, country_state, load_countries
 from city import MAP, Trip, drive, random_scenario
 import courses
@@ -23,7 +29,7 @@ import tools
 
 WEB = Path(__file__).resolve().parent / "web"
 PAGES = {"/": "index.html", "/atlas": "atlas.html", "/city": "city.html", "/tickets": "tickets.html",
-         "/courses": "courses.html", "/tools": "tools.html"}
+         "/courses": "courses.html", "/tools": "tools.html", "/benchmark": "benchmark.html"}
 KEEPALIVE = 15  # s sin eventos antes de un ping; así se detecta una pestaña cerrada.
 
 
@@ -45,8 +51,9 @@ class App:
         self.route, self.route_lock = tools.Route(), threading.Lock()
 
     def status(self):
+        usage = self.model.usage() if hasattr(self.model, "usage") else None
         return {"model": getattr(self.model, "status", "ready"), "error": getattr(self.model, "error", None),
-                "device": getattr(self.model, "device", None)}
+                "device": getattr(self.model, "device", None), "usage": usage}
 
     def step(self):
         with self.trip_lock:
@@ -106,14 +113,17 @@ class App:
 
     def desk(self):
         return {"tickets": [tickets.public(t) for t in tickets.TICKETS],
+                "referencias": {t["id"]: {"categoria": t["referencia"][0], "prioridad": t["referencia"][1],
+                                          "experto": t["referencia"][2]} for t in tickets.TICKETS},
                 "categorias": {k: {"nombre": name, "experto": owner} for k, (name, owner, _) in tickets.CATEGORIES.items()},
                 "prioridades": {k: name for k, (name, _) in tickets.PRIORITIES.items()},
-                "expertos": {k: {"nombre": name, "rol": role} for k, (name, role) in tickets.EXPERTS.items()},
+                "expertos": {k: {"nombre": name, "rol": role, **tickets.EXPERT_DETAILS[k]}
+                             for k, (name, role) in tickets.EXPERTS.items()},
                 "semaforos": tickets.LIGHTS, "asignados": self.assigned}
 
     def reset_desk(self):
         if not self.assigning.acquire(blocking=False):
-            raise LookupError("Laya está asignando tickets; espera a que termine.")
+            raise LookupError("El modelo está asignando tickets; espera a que termine.")
         try:
             self.assigned.clear()
             return self.desk()
@@ -121,25 +131,66 @@ class App:
             self.assigning.release()
 
 
-def handler_for(app):
+def warm_model(model):
+    try:
+        model.load()
+    except Exception:
+        pass  # /api/status comunica el error y cómo resolverlo.
+
+
+def free_gpu(apps, keep):
+    """Un modelo local en la GPU a la vez: con 6 GB, Kev no cabe junto a Laya y caía a CPU."""
+    for key, app in apps.items():
+        if key != keep and getattr(app.model, "device", None) == "cuda" and hasattr(app.model, "release"):
+            app.model.release()
+
+
+def describe(apps):
+    return {key: {"name": getattr(app.model, "name", key.title()), "remote": getattr(app.model, "device", None) == "api",
+                  "calibrated": getattr(app.model, "calibrated", True),
+                  "status": getattr(app.model, "status", "ready"), "error": getattr(app.model, "error", None)}
+            for key, app in apps.items()}
+
+
+def handler_for(apps):
+    if isinstance(apps, App):
+        apps = {"laya": apps}
+    benchmarking = threading.Lock()
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):  # La consola queda para errores reales.
             pass
 
-        def send_bytes(self, body, content_type, status=HTTPStatus.OK):
+        def selected(self):
+            cookie = SimpleCookie()
+            try:
+                cookie.load(self.headers.get("Cookie", ""))
+            except Exception:
+                return "laya"
+            key = cookie.get("arbiter_model")
+            return key.value if key and key.value in apps else next(iter(apps))
+
+        def current_app(self):
+            return apps[self.selected()]
+
+        def send_bytes(self, body, content_type, status=HTTPStatus.OK, headers=()):
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-cache")
+            for key, value in headers:
+                self.send_header(key, value)
             self.end_headers()
             self.wfile.write(body)
 
-        def send_json(self, payload, status=HTTPStatus.OK):
-            self.send_bytes(json.dumps(payload, ensure_ascii=False).encode(), "application/json; charset=utf-8", status)
+        def send_json(self, payload, status=HTTPStatus.OK, headers=()):
+            self.send_bytes(json.dumps(payload, ensure_ascii=False).encode(), "application/json; charset=utf-8", status, headers)
 
         def do_GET(self):
             url = urlparse(self.path)
-            routes = {"/api/status": lambda: self.send_json(app.status()),
+            app = self.current_app()
+            routes = {"/api/status": lambda: self.send_json({**app.status(), "selected": self.selected(), "models": describe(apps)}),
+                      "/api/benchmark/stream": lambda: self.stream_benchmark(parse_qs(url.query).get("models", [""])[0]),
                       "/api/atlas/countries": lambda: self.send_bytes(app.countries, "application/json; charset=utf-8"),
                       "/api/atlas/query": lambda: self.stream_query(parse_qs(url.query).get("q", [""])[0]),
                       "/api/city": lambda: self.send_json(app.city()),
@@ -153,6 +204,17 @@ def handler_for(app):
 
         def do_POST(self):
             url = urlparse(self.path)
+            if url.path == "/api/model":
+                key = parse_qs(url.query).get("name", [""])[0]
+                if key not in apps:
+                    return self.send_json({"error": "Modelo desconocido"}, HTTPStatus.BAD_REQUEST)
+                model = apps[key].model
+                if getattr(model, "device", None) != "api":
+                    free_gpu(apps, key)
+                if hasattr(model, "load") and getattr(model, "status", "ready") in ("idle", "error"):
+                    threading.Thread(target=warm_model, args=(model,), daemon=True).start()
+                return self.send_json({"selected": key}, headers=(("Set-Cookie", f"arbiter_model={key}; Path=/; SameSite=Lax; HttpOnly"),))
+            app = self.current_app()
             actions = {"/api/city/step": app.step, "/api/city/reset": app.reset, "/api/city/shuffle": app.shuffle,
                        "/api/tickets/reset": app.reset_desk, "/api/courses/step": app.course_step,
                        "/api/courses/reset": lambda: app.course_reset(parse_qs(url.query)),
@@ -178,6 +240,7 @@ def handler_for(app):
             self.send_bytes(path.read_bytes(), kind)
 
         def stream_query(self, query):
+            app = self.current_app()
             query = query.strip()
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -205,6 +268,7 @@ def handler_for(app):
 
         def stream_assign(self):
             """Asigna los tickets pendientes uno a uno y emite cada resultado en cuanto sale."""
+            app = self.current_app()
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
             self.send_header("Cache-Control", "no-cache")
@@ -228,6 +292,29 @@ def handler_for(app):
             finally:
                 app.assigning.release()
 
+        def stream_benchmark(self, requested):
+            """Corre los modelos pedidos uno tras otro y emite cada ticket en cuanto sale."""
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            keys = [k for k in requested.split(",") if k in apps] or list(apps)
+            if not benchmarking.acquire(blocking=False):
+                return self.write_event("failed", "Ya hay un benchmark en curso en otra pestaña.")
+            try:
+                self.write_event("start", {"suite": benchmark.SUITE, "fingerprint": benchmark.fingerprint(),
+                                           "created_at": datetime.now(timezone.utc).isoformat(), "models": keys})
+                for key in keys:
+                    if getattr(apps[key].model, "device", None) != "api":
+                        free_gpu(apps, key)
+                    for kind, data in benchmark.run({key: apps[key].model}):
+                        self.write_event(kind, data)
+                self.write_event("done", len(keys))
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # La pestaña canceló: el generador se abandona y no hay más llamadas.
+            finally:
+                benchmarking.release()
+
         def write_event(self, kind, data):
             payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
             self.wfile.write(f"event: {kind}\ndata: {payload}\n\n".encode())
@@ -236,8 +323,8 @@ def handler_for(app):
     return Handler
 
 
-def serve(app, port=8000, host="127.0.0.1"):
-    server = ThreadingHTTPServer((host, port), handler_for(app))
+def serve(apps, port=8000, host="127.0.0.1"):
+    server = ThreadingHTTPServer((host, port), handler_for(apps))
     server.daemon_threads = True
     return server
 
@@ -253,22 +340,30 @@ def warm(app):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Demos de Laya Showcase con el modelo en local")
+    parser = argparse.ArgumentParser(description="Arbiter: demos y benchmarks de modelos de decisión")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true", help="no abrir el navegador")
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto",
                         help="dónde corre Laya; auto usa la GPU si torch la ve")
     args = parser.parse_args()
     from fastload import SharedModel
-    app = App(SharedModel(device=args.device))
+    from kev_model import KevModel
+    from remote import ChatModel, JevModel
+    # Solo Laya tiene calibración por país en el Atlas; los demás parten de cero.
+    apps = {"laya": App(SharedModel(device=args.device)),
+            "kev": App(KevModel(), prior=defaultdict(float)),
+            "jev": App(JevModel(), prior=defaultdict(float)),
+            "gpt-luna": App(ChatModel("openai/gpt-5.6-luna", "GPT-5.6 Luna"), prior=defaultdict(float))}
     try:
-        server = serve(app, args.port)
+        server = serve(apps, args.port)
     except OSError as exc:
         raise SystemExit(f"No se pudo abrir el puerto {args.port} ({exc.strerror}); prueba con --port 8001")
+    # SIGTERM (kill, systemd, cerrar la terminal) sale como Ctrl+C: así atexit apaga Kev y libera la GPU.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     url = f"http://127.0.0.1:{server.server_address[1]}"
-    print(f"Laya Showcase en {url} (Ctrl+C para salir)", flush=True)
+    print(f"Arbiter en {url} (Ctrl+C para salir)", flush=True)
     # El modelo se carga mientras se abre la página.
-    threading.Thread(target=warm, args=(app,), daemon=True).start()
+    threading.Thread(target=warm, args=(apps["laya"],), daemon=True).start()
     if not args.no_browser:
         webbrowser.open(url)
     try:

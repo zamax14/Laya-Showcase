@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Benchmark · Arbiter</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root { --verde: #2fbf94; --amarillo: #ffc53d; --rojo: #d8344a; }
+    main { max-width: 1180px; margin: 0 auto; padding: 12px 24px 56px; }
+    .intro { max-width: 760px; margin-bottom: 20px; }
+    h1 { font-size: clamp(34px, 5vw, 58px); margin-bottom: 12px; }
+    .intro p { color: var(--ink-2); font-size: 17px; }
+    .pick { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 4px; border: 0; padding: 0; }
+    .pick legend { font-weight: 900; margin-bottom: 8px; }
+    .pick label { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 2px solid var(--line);
+      border-radius: 14px; background: var(--card); font-weight: 800; cursor: pointer; }
+    .pick label:has(input:checked) { border-color: var(--violet); background: var(--violet-soft); }
+    .pick label:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+    .pick small { color: var(--muted); font-weight: 700; }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 18px 0; }
+    .progress { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; color: var(--ink-2); }
+    .progress b { color: var(--ink); }
+    .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin: 22px 0; }
+    .result h2 { margin-bottom: 4px; }
+    .result .where { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+    .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0; padding: 8px 0; border-top: 1px solid var(--line); }
+    .metric b { font-size: 20px; line-height: 1; white-space: nowrap; }
+    .metric.best b { color: #176b53; }
+    .metric.best b::after { content: " ★"; font-size: 14px; }
+    .metric small { display: block; color: var(--muted); font-size: 12px; }
+    .tag { display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 8px; background: #fff4d6; color: #6b4a00; font-size: 12px; font-weight: 800; }
+    .cases-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .cases-head h2 { margin: 0; }
+    .cases { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-weight: 900; color: var(--ink-2); white-space: nowrap; }
+    td small { display: block; color: var(--muted); }
+    td details { max-width: 340px; }
+    td summary { cursor: pointer; font-weight: 800; }
+    td details p { margin: 6px 0 0; color: var(--ink-2); font-size: 14px; }
+    .hit { color: #176b53; font-weight: 900; }
+    .miss { color: var(--coral-text); font-weight: 900; }
+    .dot { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 50%; vertical-align: 1px; }
+    .dot[data-color="verde"] { background: var(--verde); }
+    .dot[data-color="amarillo"] { background: var(--amarillo); }
+    .dot[data-color="rojo"] { background: var(--rojo); }
+    .pending { color: var(--muted); }
+    .only-misses tbody tr[data-miss="false"] { display: none; }
+    .note { color: var(--muted); font-size: 13px; max-width: 820px; }
+    @media (max-width: 600px) { main { padding-inline: 16px; } th, td { padding: 8px; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><b>Arbiter</b><span>Benchmark</span></a>
+    <p class="model" id="model" data-state="idle"><i aria-hidden="true"></i><span>Preparando modelo…</span></p>
+  </header>
+  <main>
+    <div class="intro">
+      <h1 id="title">Los mismos casos, cada modelo</h1>
+      <p>20 tickets de TI y tres preguntas tipadas: categoría (<code>choice</code>), prioridad (<code>score</code>) y si
+        alguien no puede trabajar (<code>noul</code>). Todos los modelos reciben el mismo estado y las mismas preguntas.</p>
+    </div>
+    <fieldset class="pick" id="pick"><legend>Modelos</legend></fieldset>
+    <div class="actions">
+      <button class="btn primary" id="run" type="button">Ejecutar benchmark</button>
+      <button class="btn" id="cancel" type="button" hidden>Cancelar</button>
+      <button class="btn" id="download" type="button" hidden>Descargar JSON</button>
+    </div>
+    <ul class="progress" id="progress" role="status" aria-live="polite"></ul>
+    <div class="results" id="results"></div>
+    <section class="panel" id="cases" hidden>
+      <div class="cases-head">
+        <h2>Respuestas por ticket</h2>
+        <label><input type="checkbox" id="only-misses"> Solo desacuerdos</label>
+      </div>
+      <div class="cases"><table id="table"></table></div>
+    </section>
+    <p class="note">Categoría: 19 tickets con referencia (el ticket ambiguo se excluye). Prioridad: exacta y a un nivel o menos.
+      Bloqueo: acierto con umbral 0,5 y Brier (0 es perfecto). Semáforo: aciertos de categoría según la confianza, en verde
+      (más de 80 %), amarillo (60–80 %) y rojo; un modelo bien calibrado acierta casi todo en verde. La latencia se mide
+      tras una inferencia de calentamiento y los modelos por API incluyen la red. Las referencias son criterios de esta
+      demo, no un conjunto de evaluación externo.</p>
+  </main>
+  <script type="module" src="benchmark.js"></script>
+</body>
+</html>

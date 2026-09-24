@@ -47,7 +47,7 @@ body {
 h1, h2, h3 { margin: 0; line-height: 1.1; font-weight: 900; letter-spacing: -0.02em; }
 p { margin: 0; }
 a { color: var(--violet-deep); font-weight: 700; }
-button, input { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
 
 :focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; border-radius: 10px; }
 
@@ -66,12 +66,16 @@ button, input { font: inherit; color: inherit; }
 .brand b { font-size: 22px; font-weight: 1000; letter-spacing: -0.03em; }
 .brand span { font-size: 22px; font-weight: 600; color: var(--muted); }
 
-/* Estado de Laya: mientras carga, si falla y, ya lista, dónde corre (GPU o CPU). */
+/* Selector y estado del modelo. */
+.model-picker { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-weight: 800; }
+.bench-link { color: var(--violet-deep); text-decoration: none; font-weight: 900; }
+.bench-link:hover { text-decoration: underline; }
+.model-picker select { padding: 7px 10px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); cursor: pointer; }
 .model {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 14px 6px 10px; border-radius: 999px;
   background: var(--card); border: 2px solid var(--line);
-  font-size: 13px; font-weight: 700; color: var(--ink-2); white-space: nowrap;
+  font-size: 13px; font-weight: 700; color: var(--ink-2); max-width: min(100%, 450px);
 }
 .model i { width: 10px; height: 10px; border-radius: 50%; background: var(--sun); }
 .model[data-state="loading"] i, .model[data-state="idle"] i { animation: breathe 1.2s ease-in-out infinite; }
