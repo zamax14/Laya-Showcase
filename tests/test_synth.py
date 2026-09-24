@@ -62,6 +62,24 @@ class SynthChecks(unittest.TestCase):
             with self.assertRaises(synth.ValidationError):
                 synth.parse(bad)
 
+    def test_fallback_switches_only_when_the_first_runs_out_of_credit(self):
+        class Failing:
+            provider, model, parallel = "openrouter", "a", 8
+
+            def __init__(self, error):
+                self.error = error
+
+            def __call__(self, text):
+                raise RuntimeError(self.error)
+
+        second = FakeLLM()
+        second.provider = "openai"
+        llm = synth.Fallback(Failing("HTTP 402: Insufficient credits"), second)
+        self.assertEqual(len(llm("x")[0]), 5)
+        self.assertEqual(llm.model, "falso")  # Las filas siguientes registran el modelo que las escribió.
+        with self.assertRaises(RuntimeError):  # Otros errores no cambian de proveedor.
+            synth.Fallback(Failing("HTTP 500: caído"), second)("x")
+
     def test_leaks_detects_hints_and_category_names(self):
         self.assertTrue(synth.leaks("Parece un problema de Seguridad", "seguridad"))
         self.assertTrue(synth.leaks("no hay indicios de ataque", "correo"))

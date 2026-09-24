@@ -3,6 +3,7 @@
     python synth.py --prompt "incidencias de TI en un hospital" --n 100            # Ollama local (gemma3:12b)
     python synth.py --prompt "reportes de clientes de un banco" --modelo qwen3-coder:30b
     python synth.py --n 720 --backend openrouter                                    # GPT-5.6 Luna vía OpenRouter
+    python synth.py --n 720 --backend openai                                        # gpt-6-luna con la API de OpenAI
 
 Cada petición al LLM es para una combinación fija de categoría, prioridad y bloqueo, repartidas por igual, así que la
 etiqueta de cada texto se conoce por construcción. El prompt solo cambia el contexto: sector, tipo de texto
@@ -139,24 +140,74 @@ class Ollama:
         post(f"{self.url}/api/generate", {"model": self.model, "keep_alive": 0})
 
 
-class OpenRouter:
+class Chat:
+    """Chat completions con salida estructurada: OpenRouter o la API de OpenAI directa."""
     parallel = 8
+    # US$ por millón de tokens (entrada, salida) para la API de OpenAI, que no devuelve el costo; OpenRouter sí.
+    PRICES = {"gpt-6-luna": (0.1, 0.5), "gpt-5.6-luna": (0.2, 1.2)}
 
-    def __init__(self, model):
-        self.model, self.key = model, secret("OPENROUTER_API_KEY", "openrouter")
+    def __init__(self, provider, model):
+        self.provider, self.model = provider, model
+        if provider == "openrouter":
+            self.url, self.key = OPENROUTER, secret("OPENROUTER_API_KEY", "openrouter")
+            self.extra = {"reasoning": {"effort": "low"}, "usage": {"include": True}}
+        else:
+            self.url, self.key = "https://api.openai.com/v1", secret("OPENAI_API_KEY", "OPENAI")
+            self.extra = {"reasoning_effort": "low"}
         if not self.key:
-            raise SystemExit("Falta la llave de OpenRouter: OPENROUTER_API_KEY o el archivo «openrouter» en la raíz")
+            raise SystemExit(f"Falta la llave de {provider}: variable de entorno o archivo «{'openrouter' if provider == 'openrouter' else 'OPENAI'}» en la raíz")
 
     def __call__(self, text):
-        body = post(f"{OPENROUTER}/chat/completions", {
+        body = post(f"{self.url}/chat/completions", {
             "model": self.model, "messages": [{"role": "user", "content": text}],
             "response_format": {"type": "json_schema", "json_schema": {"name": "tickets", "strict": True, "schema": SCHEMA}},
-            "reasoning": {"effort": "low"}, "usage": {"include": True}}, self.key)
-        cost = float((body.get("usage") or {}).get("cost") or 0)
-        return parse(body["choices"][0]["message"]["content"]), cost
+            **self.extra}, self.key)
+        usage = body.get("usage") or {}
+        cost = usage.get("cost")
+        if cost is None and self.model in self.PRICES:
+            price_in, price_out = self.PRICES[self.model]
+            cost = (usage.get("prompt_tokens", 0) * price_in + usage.get("completion_tokens", 0) * price_out) / 1e6
+        return parse(body["choices"][0]["message"]["content"]), float(cost or 0)
 
     def unload(self):
         pass
+
+
+class Fallback:
+    """Usa el primero hasta que se quede sin saldo (HTTP 402) y sigue con el segundo, sin cortar la corrida."""
+
+    def __init__(self, first, second):
+        self.llms, self.parallel, self.lock = [first, second], first.parallel, threading.Lock()
+
+    @property
+    def model(self):
+        return self.llms[0].model
+
+    def __call__(self, text):
+        llm = self.llms[0]
+        try:
+            return llm(text)
+        except RuntimeError as exc:
+            if "HTTP 402" not in str(exc) or len(self.llms) == 1:
+                raise
+            with self.lock:
+                if self.llms[0] is llm:
+                    self.llms.pop(0)
+                    print(f"{llm.provider} sin saldo: se sigue con {self.llms[0].provider} ({self.llms[0].model})", flush=True)
+            return self.llms[0](text)
+
+    def unload(self):
+        pass
+
+
+def backend(name, model=None, ollama_url="http://localhost:11434"):
+    if name == "ollama":
+        return Ollama(model or "gemma3:12b", ollama_url)
+    if name == "openai":
+        return Chat("openai", model or "gpt-6-luna")
+    first = Chat("openrouter", model or "openai/gpt-5.6-luna")
+    # Respaldo: si OpenRouter se queda sin saldo y hay llave de OpenAI, se sigue con gpt-6-luna directo.
+    return Fallback(first, Chat("openai", "gpt-6-luna")) if secret("OPENAI_API_KEY", "OPENAI") else first
 
 
 def read(path=CSV_PATH):
@@ -234,17 +285,17 @@ def main():
     parser.add_argument("--contextos", type=Path,
                         help="archivo con un contexto por línea; genera --n filas para cada uno, en orden")
     parser.add_argument("--n", type=int, default=72, help="filas aproximadas; se reparten entre 36 combinaciones")
-    parser.add_argument("--backend", choices=("ollama", "openrouter"), default="ollama")
+    parser.add_argument("--backend", choices=("ollama", "openrouter", "openai"), default="ollama",
+                        help="openrouter pasa solo a openai (gpt-6-luna) si se queda sin saldo")
     # qwen3.5:9b no sirve: sin razonar ignora el esquema y razonando tardó 148 s en devolver una respuesta vacía.
-    parser.add_argument("--modelo", help="por defecto gemma3:12b en Ollama y openai/gpt-5.6-luna en OpenRouter")
+    parser.add_argument("--modelo", help="por defecto gemma3:12b en Ollama, openai/gpt-5.6-luna en OpenRouter y gpt-6-luna en OpenAI")
     parser.add_argument("--ollama", default="http://localhost:11434", help="URL del servidor de Ollama")
     parser.add_argument("--salida", type=Path, default=CSV_PATH)
     parser.add_argument("--hilos", type=int, help="llamadas simultáneas (Ollama 2, OpenRouter 8)")
     parser.add_argument("--categoria", action="append", choices=list(CATEGORIES),
                         help="solo esta categoría (se puede repetir); por defecto, las seis")
     args = parser.parse_args()
-    llm = (Ollama(args.modelo or "gemma3:12b", args.ollama) if args.backend == "ollama"
-           else OpenRouter(args.modelo or "openai/gpt-5.6-luna"))
+    llm = backend(args.backend, args.modelo, args.ollama)
     llm.parallel = args.hilos or llm.parallel
     contexts = ([line.strip() for line in args.contextos.read_text(encoding="utf-8").splitlines() if line.strip()]
                 if args.contextos else [args.prompt])
