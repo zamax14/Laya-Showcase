@@ -9,7 +9,7 @@ correcta no cambia; lo que se mide es si el modelo la sigue encontrando.
 
 - El ruido se genera una vez con GPT (OpenRouter u OpenAI) y queda en assets/benchmark/ruido.json.
 - Los resultados van a web/results/largo.json, que se reanuda si la corrida se corta.
-- Las gráficas van a assets/benchmark/largo-*.svg.
+- Las gráficas, barras de Laya base frente a la reentrenada, van a assets/benchmark/largo-*.svg.
 """
 import argparse
 import json
@@ -111,7 +111,7 @@ def models(keys):
             if not (FINETUNED / "rl_agent_config.json").exists():
                 print(f"Sin {FINETUNED.relative_to(ROOT)}: se omite la Laya ajustada")
                 continue
-            out[key] = fastload.SharedModel(path=FINETUNED, name="Laya · Mesa de ayuda")
+            out[key] = fastload.SharedModel(path=FINETUNED, name="Laya reentrenada")
         elif key == "jev":
             out[key] = JevModel()
         else:
@@ -183,54 +183,60 @@ def text(x, y, label, *, size=12, color=INK, weight=400, anchor="start"):
             f'font-size="{size}" font-weight="{weight}" fill="{color}">{escape(str(label))}</text>')
 
 
-def line_chart(path, title, subtitle, data, value, y_max, y_label, footer):
+def bar_chart(path, title, subtitle, data, value, label, y_max, y_label, footer, keys=("laya", "laya-mesa")):
+    """Barras agrupadas por longitud: Laya base frente a la reentrenada, con el valor encima de cada barra."""
+    runs = [(key, data["models"][key]) for key in keys if key in data["models"]]
     lengths = list(LENGTHS)
-    x = lambda i: LEFT + 30 + i * (RIGHT - LEFT - 60) / (len(lengths) - 1)
     y = lambda v: BOTTOM - v / y_max * (BOTTOM - TOP)
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}" '
              f'role="img" aria-label="{escape(title)}">',
              f'<rect x="4" y="4" width="875" height="435" rx="12" fill="{INK}"/>',
              f'<rect x="1" y="1" width="875" height="435" rx="12" fill="white" stroke="{INK}" stroke-width="2"/>',
              text(24, 36, title, size=20, weight=700), text(24, 57, subtitle, size=12, color=MUTED)]
-    for i, (key, entry) in enumerate(data["models"].items()):
-        parts += [f'<rect x="{72 + i * 190}" y="74" width="15" height="15" rx="3" fill="{COLORS[key]}" stroke="{INK}" stroke-width="2"/>',
-                  text(72 + i * 190 + 23, 87, entry["name"], size=12, weight=700)]
+    for i, (key, entry) in enumerate(runs):
+        parts += [f'<rect x="{72 + i * 230}" y="74" width="15" height="15" rx="3" fill="{COLORS[key]}" stroke="{INK}" stroke-width="2"/>',
+                  text(72 + i * 230 + 23, 87, entry["name"], size=12, weight=700)]
     for tick in range(5):
         v = y_max * tick / 4
         dash = "" if tick == 0 else ' stroke-dasharray="3 4"'
         parts += [f'<line x1="{LEFT}" x2="{RIGHT}" y1="{y(v):.1f}" y2="{y(v):.1f}" stroke="{GRID}"{dash}/>',
                   text(LEFT - 10, y(v) + 4, y_label(v), color=MUTED, anchor="end")]
-    for i, length in enumerate(lengths):
-        tokens = data["tokens"][length]
-        parts.append(text(x(i), BOTTOM + 24, length, weight=700, anchor="middle"))
-        parts.append(text(x(i), BOTTOM + 40, f"~{tokens:,} tokens".replace(",", "."), size=11, color=MUTED, anchor="middle"))
-    for key, entry in data["models"].items():
-        points = [(x(i), y(value(entry["lengths"][length]["summary"])))
-                  for i, length in enumerate(lengths) if "summary" in entry["lengths"].get(length, {})]
-        if not points:
-            continue
-        parts.append(f'<polyline points="{" ".join(f"{px:.1f},{py:.1f}" for px, py in points)}" fill="none" '
-                     f'stroke="{COLORS[key]}" stroke-width="4" stroke-linejoin="round"/>')
-        parts += [f'<circle cx="{px:.1f}" cy="{py:.1f}" r="6" fill="{COLORS[key]}" stroke="{INK}" stroke-width="2"/>'
-                  for px, py in points]
+    group = (RIGHT - LEFT) / len(lengths)
+    bar = min(group * .72, 150) / len(runs)
+    for g, length in enumerate(lengths):
+        center = LEFT + group * (g + .5)
+        parts += [text(center, BOTTOM + 24, length, weight=700, anchor="middle"),
+                  text(center, BOTTOM + 40, f"~{data['tokens'][length]:,} tokens".replace(",", "."), size=11,
+                       color=MUTED, anchor="middle")]
+        for i, (key, entry) in enumerate(runs):
+            summary = entry["lengths"].get(length, {}).get("summary")
+            if not summary:
+                continue
+            v, x = value(summary), center - bar * len(runs) / 2 + i * bar
+            parts += [f'<rect x="{x + 2:.1f}" y="{y(v):.1f}" width="{bar - 4:.1f}" height="{BOTTOM - y(v):.1f}" rx="4" '
+                      f'fill="{COLORS[key]}" stroke="{INK}" stroke-width="2"/>',
+                      text(x + bar / 2, y(v) - 7, label(v), size=11, weight=700, anchor="middle")]
     parts += [text(24, 418, footer, size=11, color=MUTED), "</svg>"]
     path.write_text("\n".join(parts) + "\n", encoding="utf-8")
 
 
 def charts(data):
     footer = f"tickets-v2-largo · huella {data['fingerprint']} · {data.get('updated_at', '')[:10]}"
-    pct = lambda v: f"{v:.0f} %"
-    line_chart(CHARTS / "largo-categoria.svg", "Categoría según la longitud del contexto",
-               "Porcentaje correcto en 19 tickets con referencia, con el ticket al inicio de un hilo de correo", data,
-               lambda s: 100 * s["category_correct"] / s["category_total"], 100, pct, footer)
-    line_chart(CHARTS / "largo-prioridad.svg", "Prioridad exacta según la longitud del contexto",
-               "Porcentaje correcto en 20 tickets", data,
-               lambda s: 100 * s["priority_correct"] / s["priority_total"], 100, pct, footer)
-    worst = max(s["summary"]["p50_latency_ms"] for e in data["models"].values() for s in e["lengths"].values() if "summary" in s)
+    pct, where = (lambda v: f"{v:.0f} %"), "con el ticket al inicio de un hilo de correo de hasta 8k tokens"
+    for name, title, subtitle, value in [
+            ("categoria", "Categoría según la longitud del contexto", f"Porcentaje correcto en 19 tickets, {where}",
+             lambda s: 100 * s["category_correct"] / s["category_total"]),
+            ("prioridad", "Prioridad exacta según la longitud del contexto", f"Porcentaje correcto en 20 tickets, {where}",
+             lambda s: 100 * s["priority_correct"] / s["priority_total"]),
+            ("bloqueo", "Bloqueo según la longitud del contexto", f"Porcentaje correcto en 20 tickets, {where}",
+             lambda s: 100 * s["blocking_correct"] / s["blocking_total"])]:
+        bar_chart(CHARTS / f"largo-{name}.svg", title, subtitle, data, value, pct, 100, pct, footer)
+    worst = max(s["summary"]["p50_latency_ms"] for k in ("laya", "laya-mesa") if k in data["models"]
+                for s in data["models"][k]["lengths"].values() if "summary" in s)
     step = 10 ** len(str(int(worst))) / 10
-    line_chart(CHARTS / "largo-latencia.svg", "Latencia según la longitud del contexto",
-               "Mediana por ticket (tres preguntas); los modelos por API incluyen la red", data,
-               lambda s: s["p50_latency_ms"], step * (-(-worst // step)), lambda v: f"{v:.0f} ms", footer)
+    bar_chart(CHARTS / "largo-latencia.svg", "Latencia según la longitud del contexto",
+              "Mediana por ticket (tres preguntas) en una RTX 4070 Ti SUPER", data, lambda s: s["p50_latency_ms"],
+              lambda v: f"{v:.0f} ms", step * (-(-worst // step)), lambda v: f"{v:.0f} ms", footer)
 
 
 def main():
