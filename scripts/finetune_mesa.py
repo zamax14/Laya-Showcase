@@ -137,7 +137,7 @@ class Trainer:
         from laya.common import QTYPES
         self.cfg, self.qtypes = cfg, QTYPES
         self.agent = fastload.load_agent(device="cuda")
-        self.agent.cfg["max_len"], self.agent.cfg["head_max_len"] = 1024, 256  # Los mismos topes que usa Arbiter.
+        self.agent.cfg["max_len"], self.agent.cfg["head_max_len"] = 8192, 256  # Los mismos topes que usa Arbiter.
         self.model, self.device = self.agent.model, self.agent.device
         self.pad = self.agent.tok.pad_token_id
         self.amp = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16  # La T4 no tiene bf16.

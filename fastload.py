@@ -41,7 +41,8 @@ def pick_device(requested="auto"):
     return requested
 
 
-def load_agent(device="cpu"):
+def load_agent(device="cpu", path=None):
+    """El checkpoint de Hugging Face, o uno local (por ejemplo, el que deja scripts/finetune_mesa.py)."""
     os.environ.setdefault("USE_TF", "0")
     import laya
     from huggingface_hub import snapshot_download
@@ -50,8 +51,8 @@ def load_agent(device="cpu"):
     except ImportError:  # transformers < 5 lo exponía en modeling_utils.
         from transformers.modeling_utils import no_init_weights
     repo, revision = CHECKPOINT.split("@")
-    checkpoint = snapshot_download(repo, revision=revision,
-                                   allow_patterns=["rl_agent_config.json", "model.safetensors", "tokenizer/*", "encoder/*"])
+    checkpoint = str(path) if path else snapshot_download(
+        repo, revision=revision, allow_patterns=["rl_agent_config.json", "model.safetensors", "tokenizer/*", "encoder/*"])
     # El contexto desactiva las funciones de init de torch mientras se construye el modelo.
     with no_init_weights():
         return laya.load(checkpoint, device=device)
@@ -62,8 +63,12 @@ class SharedModel:
     name = "Laya Multilingual"
     checkpoint = CHECKPOINT
 
-    def __init__(self, max_len=1024, head_max_len=256, device="auto"):
-        self.max_len, self.head_max_len, self.requested = max_len, head_max_len, device
+    # 8192 es el máximo del encoder (mmBERT, max_position_embeddings). El checkpoint se entrenó con secuencias
+    # de hasta 1024; cuánto rinde más allá lo mide scripts/benchmark_largo.py.
+    def __init__(self, max_len=8192, head_max_len=256, device="auto", path=None, name=None):
+        self.max_len, self.head_max_len, self.requested, self.path = max_len, head_max_len, device, path
+        if path:
+            self.name, self.checkpoint = name or Path(path).name, str(path)
         self.agent, self.status, self.error, self.device = None, "idle", None, None
         self.lock = threading.Lock()
 
@@ -74,7 +79,7 @@ class SharedModel:
                 try:
                     # Sin tope de hilos: torch usa los núcleos físicos (medido: 4 hilos era un 35 % más lento).
                     device = pick_device(self.requested)
-                    agent = load_agent(device=device)
+                    agent = load_agent(device=device, path=self.path)
                 except Exception as exc:
                     self.status, self.error = "error", f"{type(exc).__name__}: {exc}"
                     raise
