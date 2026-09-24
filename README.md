@@ -231,37 +231,12 @@ Las referencias son criterios de esta demo, no un conjunto de evaluación extern
 miden la precisión general. Las latencias por API incluyen la red. Cada ejecución se descarga en
 JSON con la huella de tickets y preguntas, para comparar solo ejecuciones que midieron lo mismo.
 
-### Ajuste fino para la Mesa de ayuda
+### Ajuste fino
 
-Laya sin ajustar acierta la categoría en 12 de 19 tickets; su propio README dice que es una base rápida para
-especializar, no un modelo que funcione bien sin entrenar. El ajuste tiene dos pasos:
-
-```bash
-# 1. Datos sintéticos con Ollama (o --backend openrouter). Se añaden a data/sintetico.csv.
-.venv/bin/python synth.py --prompt "tickets de TI de una empresa mediana" --n 720
-.venv/bin/python synth.py --prompt "incidencias reportadas por enfermería en un hospital" --n 200
-
-# 2. Entrenamiento: prueba corta con tope de 3 GB de GPU, o completo en una GPU de 12 GB o más.
-.venv/bin/python scripts/finetune_mesa.py
-.venv/bin/python scripts/finetune_mesa.py --completo
-```
-
-- **Datos.** `synth.py` pide cada texto para una combinación fija de categoría, prioridad y bloqueo, repartidas por
-  igual, así que la etiqueta se conoce por construcción. `--prompt` solo cambia el contexto: sector, tipo de texto,
-  tono. Descarta los textos que delatan la respuesta y los títulos repetidos o copiados del benchmark.
-- **Formato.** Un modelo de Pydantic genera el JSON Schema que restringe la salida en Ollama y en OpenRouter, y
-  valida cada respuesta: una respuesta en texto libre, con campos vacíos o con descripciones de menos de 25
-  palabras se descarta entera. Ollama usa `gemma3:12b` por defecto. `qwen3.5:9b` no sirve: sin razonar ignora el
-  esquema, y razonando tardó 148 s en devolver una respuesta vacía.
-- **Profesor.** Jev responde las mismas preguntas sobre cada caso. Su distribución suaviza el objetivo (30 %) y
-  descarta los casos que no ve en la categoría pedida. Sus respuestas quedan en `data/profesor.jsonl`, y solo se
-  pagan las nuevas: unos 4 centavos por cada 1.000 casos. Sin llave, o con `--sin-profesor`, se entrena con la
-  etiqueta suavizada.
-- **Receta.** RLCD, la del [notebook oficial de Laya](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb):
-  reglas de puntuación propias más entropía cruzada suave, calibración con casos apartados y la mejor época según la
-  validación.
-- **Medición.** Compara base y ajustada en validación y en los 20 tickets del benchmark, que nunca entran al
-  entrenamiento. El modelo queda en `.model-cache/laya-mesa-de-ayuda/` con sus cifras en `resultados.json`.
+El reentrenamiento de Laya para la Mesa de ayuda vive en su propio repo,
+[Laya-Finetune](https://github.com/zamax14/Laya-Finetune): generador de tickets sintéticos, entrenamiento RLCD con
+Jev como profesor, notebooks y resultados. `scripts/benchmark_largo.py` acepta el checkpoint que produce
+(`.model-cache/laya-mesa-de-ayuda/`) para compararlo aquí con Jev y GPT.
 
 ### Con GPU
 
@@ -377,8 +352,7 @@ sección de costuras más arriba.
 ├── kev_model.py     Kev local: arranca y apaga su servidor en otro entorno
 ├── remote.py        Jev y GPT vía OpenRouter, y la normalización de respuestas
 ├── benchmark.py     suite de tickets, métricas y eventos del benchmark
-├── synth.py         datos sintéticos etiquetados para reentrenar, con Ollama u OpenRouter
-├── scripts/         instalación de Kev y ajuste fino de Laya para la Mesa de ayuda
+├── scripts/         instalación de Kev y benchmark de contexto largo
 ├── tickets.py       Mesa de ayuda: tickets, preguntas y semáforo
 ├── courses.py       Ruta: catálogo, objetivos, prerrequisitos y bucle de decisión
 ├── tools.py         Herramientas: catálogo MCP, preguntas por vuelta y encadenado de argumentos
