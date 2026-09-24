@@ -1,7 +1,7 @@
 """Datos sintéticos para la Mesa de ayuda: un LLM escribe textos con la respuesta decidida de antemano y se guardan en CSV.
 
-    python synth.py --prompt "incidencias de TI en un hospital" --n 100            # Ollama local (qwen3.5:9b)
-    python synth.py --prompt "reportes de clientes de un banco" --modelo gemma3:12b
+    python synth.py --prompt "incidencias de TI en un hospital" --n 100            # Ollama local (gemma3:12b)
+    python synth.py --prompt "reportes de clientes de un banco" --modelo qwen3-coder:30b
     python synth.py --n 720 --backend openrouter                                    # GPT-5.6 Luna vía OpenRouter
 
 Cada petición al LLM es para una combinación fija de categoría, prioridad y bloqueo, repartidas por igual, así que la
@@ -13,7 +13,6 @@ que lee scripts/finetune_mesa.py para reentrenar.
 import argparse
 import csv
 import hashlib
-import json
 import random
 import re
 import time
@@ -21,6 +20,8 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from fastload import secret
 from remote import OPENROUTER, post
@@ -52,10 +53,43 @@ Reglas:
 - Área del solicitante: una de {areas}. Inventa nombres y apellidos hispanos variados.
 - Situaciones distintas de estas, que ya existen: {seen}.'''
 DEFAULT_CONTEXT = "tickets de la mesa de ayuda de una empresa mediana"
-SCHEMA = {"type": "object", "additionalProperties": False, "required": ["tickets"], "properties": {"tickets": {
-    "type": "array", "items": {"type": "object", "additionalProperties": False,
-                               "required": ["titulo", "solicitante", "area", "descripcion"],
-                               "properties": {k: {"type": "string"} for k in ("titulo", "solicitante", "area", "descripcion")}}}}}
+
+
+class Ticket(BaseModel):
+    """Un texto generado. Las comprobaciones no entran en el esquema (OpenRouter en modo estricto no las admite)."""
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    titulo: str
+    solicitante: str
+    area: str
+    descripcion: str
+
+    @field_validator("titulo", "solicitante", "area")
+    @classmethod
+    def not_empty(cls, value):
+        if not value:
+            raise ValueError("vacío")
+        return value
+
+    @field_validator("descripcion")
+    @classmethod
+    def long_enough(cls, value):
+        if len(value.split()) < 25:  # La regla pide de 50 a 130 palabras; por debajo de 25 no hay contexto.
+            raise ValueError(f"descripción de {len(value.split())} palabras")
+        return value
+
+
+class Batch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tickets: list[Ticket]
+
+
+# El mismo esquema restringe la salida en Ollama (format) y en OpenRouter (json_schema estricto).
+SCHEMA = Batch.model_json_schema()
+
+
+def parse(content):
+    """Valida la respuesta del LLM; si no es un lote de tickets bien formado, la llamada se descarta entera."""
+    return [t.model_dump() for t in Batch.model_validate_json(content).tickets]
 
 
 def norm(text):
@@ -85,7 +119,7 @@ class Ollama:
         body = post(f"{self.url}/api/chat", {"model": self.model, "messages": [{"role": "user", "content": text}],
                                               "format": SCHEMA, "stream": False, "think": False,
                                               "options": {"temperature": 0.9}}, timeout=600)
-        return json.loads(body["message"]["content"])["tickets"], 0.0
+        return parse(body["message"]["content"]), 0.0
 
     def unload(self):
         """Libera la VRAM al terminar: el entrenamiento suele ir después en la misma GPU."""
@@ -106,7 +140,7 @@ class OpenRouter:
             "response_format": {"type": "json_schema", "json_schema": {"name": "tickets", "strict": True, "schema": SCHEMA}},
             "reasoning": {"effort": "low"}, "usage": {"include": True}}, self.key)
         cost = float((body.get("usage") or {}).get("cost") or 0)
-        return json.loads(body["choices"][0]["message"]["content"])["tickets"], cost
+        return parse(body["choices"][0]["message"]["content"]), cost
 
     def unload(self):
         pass
@@ -137,19 +171,19 @@ def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
                 break
             try:
                 batch, spent = llm(prompt_for(spec, context, seen, rng))
+            except ValidationError as exc:
+                print(f"{category}/{priority}/{blocking}: respuesta descartada, {exc.error_count()} errores de formato", flush=True)
+                continue
             except Exception as exc:
                 print(f"{category}/{priority}/{blocking}: {type(exc).__name__}: {exc}", flush=True)
                 continue
             cost += spent
             for t in batch:
-                title = norm(t.get("titulo", ""))
-                if not title or not t.get("descripcion") or title in taken or title in map(norm, seen) \
-                        or leaks(t["descripcion"], category):
+                title = norm(t["titulo"])
+                if title in taken or title in map(norm, seen) or leaks(t["descripcion"], category):
                     continue
                 seen.append(t["titulo"])
-                rows.append({"titulo": t["titulo"].strip(), "solicitante": t["solicitante"].strip(),
-                             "area": t["area"].strip(), "descripcion": t["descripcion"].strip(),
-                             "categoria": category, "prioridad": priority, "bloquea": str(blocking).lower()})
+                rows.append({**t, "categoria": category, "prioridad": priority, "bloquea": str(blocking).lower()})
         return rows[:per_spec], cost
 
     with ThreadPoolExecutor(llm.parallel) as pool:
@@ -175,11 +209,12 @@ def main():
                         help="contexto: sector, tipo de texto (tickets, incidencias, reportes…), tono")
     parser.add_argument("--n", type=int, default=72, help="filas aproximadas; se reparten entre 36 combinaciones")
     parser.add_argument("--backend", choices=("ollama", "openrouter"), default="ollama")
-    parser.add_argument("--modelo", help="por defecto qwen3.5:9b en Ollama y openai/gpt-5.6-luna en OpenRouter")
+    # qwen3.5:9b no sirve: sin razonar ignora el esquema y razonando tardó 148 s en devolver una respuesta vacía.
+    parser.add_argument("--modelo", help="por defecto gemma3:12b en Ollama y openai/gpt-5.6-luna en OpenRouter")
     parser.add_argument("--ollama", default="http://localhost:11434", help="URL del servidor de Ollama")
     parser.add_argument("--salida", type=Path, default=CSV_PATH)
     args = parser.parse_args()
-    llm = (Ollama(args.modelo or "qwen3.5:9b", args.ollama) if args.backend == "ollama"
+    llm = (Ollama(args.modelo or "gemma3:12b", args.ollama) if args.backend == "ollama"
            else OpenRouter(args.modelo or "openai/gpt-5.6-luna"))
     started = time.time()
     rows, cost = generate(llm, args.n, args.prompt, args.salida)

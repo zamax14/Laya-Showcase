@@ -239,7 +239,7 @@ especializar, no un modelo que funcione bien sin entrenar. El ajuste tiene dos p
 ```bash
 # 1. Datos sintéticos con Ollama (o --backend openrouter). Se añaden a data/sintetico.csv.
 .venv/bin/python synth.py --prompt "tickets de TI de una empresa mediana" --n 720
-.venv/bin/python synth.py --prompt "incidencias reportadas por enfermería en un hospital" --n 200 --modelo gemma3:12b
+.venv/bin/python synth.py --prompt "incidencias reportadas por enfermería en un hospital" --n 200
 
 # 2. Entrenamiento: prueba corta con tope de 3 GB de GPU, o completo en una GPU de 12 GB o más.
 .venv/bin/python scripts/finetune_mesa.py
@@ -249,6 +249,10 @@ especializar, no un modelo que funcione bien sin entrenar. El ajuste tiene dos p
 - **Datos.** `synth.py` pide cada texto para una combinación fija de categoría, prioridad y bloqueo, repartidas por
   igual, así que la etiqueta se conoce por construcción. `--prompt` solo cambia el contexto: sector, tipo de texto,
   tono. Descarta los textos que delatan la respuesta y los títulos repetidos o copiados del benchmark.
+- **Formato.** Un modelo de Pydantic genera el JSON Schema que restringe la salida en Ollama y en OpenRouter, y
+  valida cada respuesta: una respuesta en texto libre, con campos vacíos o con descripciones de menos de 25
+  palabras se descarta entera. Ollama usa `gemma3:12b` por defecto. `qwen3.5:9b` no sirve: sin razonar ignora el
+  esquema, y razonando tardó 148 s en devolver una respuesta vacía.
 - **Profesor.** Jev responde las mismas preguntas sobre cada caso. Su distribución suaviza el objetivo (30 %) y
   descarta los casos que no ve en la categoría pedida. Sus respuestas quedan en `data/profesor.jsonl`, y solo se
   pagan las nuevas: unos 4 centavos por cada 1.000 casos. Sin llave, o con `--sin-profesor`, se entrena con la

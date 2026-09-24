@@ -43,6 +43,15 @@ class SynthChecks(unittest.TestCase):
             synth.generate(FakeLLM(), 36, "otro contexto", path, seed=2)  # Se añade sin repetir la cabecera.
             self.assertEqual(len(synth.read(path)), 108)
 
+    def test_parse_rejects_free_text_and_thin_tickets(self):
+        words = " ".join(["palabra"] * 30)
+        good = '{"tickets": [{"titulo": " VPN caída ", "solicitante": "Ana", "area": "Ventas", "descripcion": "%s"}]}' % words
+        self.assertEqual(synth.parse(good)[0]["titulo"], "VPN caída")  # Se recortan los espacios.
+        for bad in ("**Ticket 1**\nSujeto: VPN", good.replace(words, "muy corta"), good.replace('"Ana"', '""'),
+                    good.replace('"area"', '"extra": 1, "area"')):
+            with self.assertRaises(synth.ValidationError):
+                synth.parse(bad)
+
     def test_leaks_detects_hints_and_category_names(self):
         self.assertTrue(synth.leaks("Parece un problema de Seguridad", "seguridad"))
         self.assertTrue(synth.leaks("no hay indicios de ataque", "correo"))
