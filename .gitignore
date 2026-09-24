@@ -2,6 +2,7 @@
 .venv-kev/
 .model-cache/
 .kev.log
+synth.log
 __pycache__/
 *.pyc
 HF_TOKEN
