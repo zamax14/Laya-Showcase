@@ -1,4 +1,5 @@
 """Atlas de gastronomía: Laya puntúa la cocina de cada país, por lotes y de forma cancelable."""
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 from pathlib import Path
@@ -6,6 +7,7 @@ import queue
 import sys
 import threading
 import time
+from fastload import CHECKPOINT
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 BATCH_SIZE = 8
@@ -74,7 +76,7 @@ def relative(p, prior):
 
 def load_prior(countries):
     data = json.loads(PRIOR_PATH.read_text(encoding="utf-8")) if PRIOR_PATH.exists() else {}
-    if (data.get("question") != QUESTION or data.get("queries") != list(CALIBRATION)
+    if (data.get("model") != CHECKPOINT or data.get("question") != QUESTION or data.get("queries") != list(CALIBRATION)
             or set(data.get("prior", {})) != {c["id"] for c in countries}):
         raise ValueError("La calibración falta o no coincide con las fichas; ejecuta: python3 atlas.py calibrar")
     return data["prior"]
@@ -87,7 +89,7 @@ def calibrate(countries, model):
         for country in countries:
             p = extract_scores(model.predict(country_state(country), questions_for([country], query)), [country])
             prior[country["id"]] = prior.get(country["id"], 0) + logit(p[country["id"]]) / len(CALIBRATION)
-    PRIOR_PATH.write_text(json.dumps({"question": QUESTION, "queries": list(CALIBRATION),
+    PRIOR_PATH.write_text(json.dumps({"model": CHECKPOINT, "question": QUESTION, "queries": list(CALIBRATION),
                                       "prior": {k: round(v, 3) for k, v in sorted(prior.items())}},
                                      ensure_ascii=False, indent=1), encoding="utf-8")
 
@@ -136,21 +138,22 @@ class Evaluator:
             started = time.monotonic()
             try:
                 self.warm()
-                scores = {}
-                for index, country in enumerate(self.countries):
-                    if cancelled.is_set():
-                        break
-                    questions = questions_for([country], query)
-                    raw = extract_scores(self.model.predict(country_state(country), questions), [country])
-                    scores[country["id"]] = relative(raw[country["id"]], self.prior[country["id"]])
-                    # Se comprueba tras cada predicción: nada se publica de una consulta cancelada.
-                    if cancelled.is_set():
-                        break
-                    if (index + 1) % BATCH_SIZE == 0 or index + 1 == len(self.countries):
+                def score(country):
+                    raw = extract_scores(self.model.predict(country_state(country), questions_for([country], query)), [country])
+                    return country["id"], relative(raw[country["id"]], self.prior[country["id"]])
+
+                # Los modelos por API esperan a la red, no a la GPU: se lanzan varios países a la vez.
+                with ThreadPoolExecutor(getattr(self.model, "parallel", 1)) as pool:
+                    for start in range(0, len(self.countries), BATCH_SIZE):
+                        if cancelled.is_set():
+                            break
+                        scores = dict(pool.map(score, self.countries[start:start + BATCH_SIZE]))
+                        # Se comprueba tras cada lote: nada se publica de una consulta cancelada.
+                        if cancelled.is_set():
+                            break
                         events.put(("batch", scores))
-                        scores = {}
-                else:
-                    events.put(("done", round(time.monotonic() - started, 2)))
+                    else:
+                        events.put(("done", round(time.monotonic() - started, 2)))
             except Exception as exc:
                 if not cancelled.is_set():
                     events.put(("failed", f"{type(exc).__name__}: {exc}"))

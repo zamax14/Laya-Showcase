@@ -6,6 +6,25 @@ carga en CPU de ~14 s a ~1,4 s y da exactamente los mismos pesos y logits.
 """
 import os
 import threading
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+
+
+def secret(env, filename):
+    """Llave desde la variable de entorno o, si falta, desde un archivo de la raíz (ignorado en git)."""
+    value = os.environ.get(env)
+    if not value and (ROOT / filename).is_file():
+        value = (ROOT / filename).read_text(encoding="utf-8").strip()
+    return value or None
+
+
+if secret("HF_TOKEN", "HF_TOKEN"):  # Descargas autenticadas de Hugging Face, también para Kev.
+    os.environ["HF_TOKEN"] = secret("HF_TOKEN", "HF_TOKEN")
+HF_HOME = ROOT / ".model-cache" / "huggingface"
+os.environ["HF_HOME"] = str(HF_HOME)
+os.environ["HF_HUB_CACHE"] = str(HF_HOME / "hub")
+CHECKPOINT = "convaiinnovations/laya-multilingual@82d57fc4f2d1be3d2caac494045f2ec51d0842f3"
 
 # torch 2.14 envía algunas operaciones de GPU a kernels de Triton que compilan C y necesitan Python.h
 # (paquete python3-dev). Con este interruptor oficial usa las operaciones normales de torch.
@@ -22,22 +41,28 @@ def pick_device(requested="auto"):
     return requested
 
 
-def load_agent(subfolder="multilingual", device="cpu"):
+def load_agent(device="cpu"):
     os.environ.setdefault("USE_TF", "0")
     import laya
+    from huggingface_hub import snapshot_download
     try:
         from transformers.initialization import no_init_weights
     except ImportError:  # transformers < 5 lo exponía en modeling_utils.
         from transformers.modeling_utils import no_init_weights
+    repo, revision = CHECKPOINT.split("@")
+    checkpoint = snapshot_download(repo, revision=revision,
+                                   allow_patterns=["rl_agent_config.json", "model.safetensors", "tokenizer/*", "encoder/*"])
     # El contexto desactiva las funciones de init de torch mientras se construye el modelo.
     with no_init_weights():
-        return laya.load("convaiinnovations/laya", subfolder=subfolder, device=device)
+        return laya.load(checkpoint, device=device)
 
 
 class SharedModel:
     """Una instancia de Laya para todas las demos; cada uso del modelo va en serie."""
+    name = "Laya Multilingual"
+    checkpoint = CHECKPOINT
 
-    def __init__(self, max_len=2048, head_max_len=512, device="auto"):
+    def __init__(self, max_len=1024, head_max_len=256, device="auto"):
         self.max_len, self.head_max_len, self.requested = max_len, head_max_len, device
         self.agent, self.status, self.error, self.device = None, "idle", None, None
         self.lock = threading.Lock()
@@ -61,6 +86,16 @@ class SharedModel:
                 self.agent, self.status, self.device = agent, "ready", device
         return self.agent
 
+    def release(self):
+        """Suelta los pesos para dejar la GPU a otro modelo local; la próxima predicción recarga (~3 s)."""
+        with self.lock:
+            if self.agent is None:
+                return
+            self.agent, self.status = None, "idle"
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
     def tokens(self, text):
         agent = self.load()
         with self.lock:  # El tokenizador rápido no admite usos concurrentes.
@@ -76,4 +111,7 @@ class SharedModel:
                                          10**6, self.head_max_len)
                 if len(full) > self.max_len:
                     raise ValueError(f"El estado no cabe en el contexto: {len(full)} de {self.max_len} tokens")
-            return agent.predict(state, questions)
+            result = agent.predict(state, questions)
+            # Laya pasa a CPU para siempre si la GPU se queda sin memoria: que el indicador lo diga.
+            self.device = agent.device.type
+            return result
