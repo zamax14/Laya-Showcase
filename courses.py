@@ -110,17 +110,14 @@ PROFILES = {
               "completados": ["programacion-cero", "python-basico", "git-github", "sql-datos"]},
 }
 
-# Instrucciones en inglés, como en la Mesa de ayuda. Lo que ve quien juega está siempre en español.
+# La lista de habilidades da más señal que la prosa adicional (ver medición de las nueve rutas).
 INSTRUCTIONS = ("Which course should this student take next to reach the `objetivo`? Prefer a course that "
                 "teaches a skill listed in `le_falta`, that fits the student's current level, and that the "
                 "student can finish with the time available. Ignore courses unrelated to the goal.")
 
 
 def describe(course):
-    """Lo que Laya lee de cada candidato: primero qué enseña, que es lo que compara con `le_falta`.
-
-    Con la descripción del curso por delante elegía peor (medido: 21 cursos inútiles de 64 frente a 14 de 57).
-    """
+    """Criterio compacto para el modelo; la descripción completa queda en el catálogo visible."""
     skills = ", ".join(SKILLS[s] for s in course["ensena"])
     return f"Enseña {skills}. {course['nombre']}, nivel {course['nivel']}, {course['horas']} horas."
 
@@ -189,12 +186,7 @@ class Roadmap:
         return [c for c in COURSES if c["id"] not in self.taken and all(s in self.skills for s in c["requisitos"])]
 
     def state(self):
-        """Exactamente lo que lee Laya antes de decidir: tres listas, sin prosa.
-
-        Añadir el objetivo escrito y la descripción del estudiante empeoraba la ruta (medido: 26
-        cursos inútiles de 66 frente a 16 de 59), y las horas libres, otros 5. El objetivo entra
-        como `le_falta`, y las horas libres las usan las reglas para estimar las semanas.
-        """
+        """Habilidades relevantes y progreso; los candidatos llegan por separado."""
         return {"le_falta": [SKILLS[s] for s in self.required()],
                 "ya_sabe": [SKILLS[s] for s in self.skills] or ["nada todavía"],
                 "cursos_completados": [CATALOG[c]["nombre"] for c in self.taken] or ["ninguno"]}
