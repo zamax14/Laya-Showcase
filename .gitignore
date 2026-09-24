@@ -3,6 +3,7 @@
 .model-cache/
 .kev.log
 synth.log
+finetune.log
 __pycache__/
 *.pyc
 HF_TOKEN
