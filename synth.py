@@ -15,6 +15,7 @@ import csv
 import hashlib
 import random
 import re
+import threading
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -157,11 +158,25 @@ def read(path=CSV_PATH):
 
 
 def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
-    """Genera unas n filas repartidas entre las 36 combinaciones y las añade al CSV. Devuelve (filas, costo)."""
+    """Genera unas n filas repartidas entre las 36 combinaciones y las añade al CSV. Devuelve (filas, costo).
+
+    Cada combinación se escribe en cuanto termina: si el proceso se corta, lo generado queda en el CSV.
+    """
     taken = {norm(t["titulo"]) for t in TICKETS} | {norm(r["titulo"]) for r in read(path)}
     seed = seed if seed is not None else time.time_ns()
     specs = random.Random(seed).sample(SPECS, min(n, len(SPECS)))  # Con n < 36, n combinaciones al azar.
     per_spec = -(-n // len(specs))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    written, lock = [], threading.Lock()
+
+    def save(rows):
+        with lock, path.open("a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, FIELDS)
+            if f.tell() == 0:
+                writer.writeheader()
+            writer.writerows(rows)
+            written.extend(rows)
+            print(f"{len(written)}/{len(specs) * per_spec} filas", flush=True)
 
     def one(spec):
         # Las llamadas de una combinación van en serie para que cada una vea los títulos ya usados.
@@ -184,24 +199,17 @@ def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
                 if title in taken or title in map(norm, seen) or leaks(t["descripcion"], category):
                     continue
                 seen.append(t["titulo"])
-                rows.append({**t, "categoria": category, "prioridad": priority, "bloquea": str(blocking).lower()})
-        return rows[:per_spec], cost
+                rows.append({**t, "id": hashlib.sha1((t["titulo"] + t["descripcion"]).encode()).hexdigest()[:12],
+                             "categoria": category, "prioridad": priority, "bloquea": str(blocking).lower(),
+                             "contexto": context, "modelo": llm.model,
+                             "creado": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+        save(rows[:per_spec])
+        return cost
 
     with ThreadPoolExecutor(llm.parallel) as pool:
-        results = list(pool.map(one, specs))
+        cost = sum(pool.map(one, specs))
     llm.unload()
-    created = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    rows = [{**r, "id": hashlib.sha1((r["titulo"] + r["descripcion"]).encode()).hexdigest()[:12],
-             "contexto": context, "modelo": llm.model, "creado": created}
-            for batch, _ in results for r in batch][:n]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    new_file = not path.exists() or path.stat().st_size == 0
-    with path.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, FIELDS)
-        if new_file:
-            writer.writeheader()
-        writer.writerows(rows)
-    return rows, sum(cost for _, cost in results)
+    return written, cost
 
 
 def main():
