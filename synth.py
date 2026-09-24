@@ -49,11 +49,22 @@ Todos corresponden a esta situación:
 Reglas:
 - Escríbelos como quien los envía, de 50 a 130 palabras. Varía la longitud, el tono y el nivel de detalle.
 - Da contexto concreto: desde cuándo, qué equipo o sistema, mensajes de error literales si los hay, qué se probó, a cuántas personas afecta, plazos e impacto.
+- Los hechos del texto deben bastar para que un técnico elija ese equipo sin dudar: tienen que aparecer {signals}.
 - No nombres el equipo que debe atenderlo ni la categoría, y no hagas comentarios que den la respuesta («no es un fallo de…», «no hay indicios de…», «corresponde a…»).
 - A veces menciona otros sistemas que siguen funcionando o que se ven afectados sin ser la causa, como pasa en la vida real.
 - Área del solicitante: una de {areas}. Inventa nombres y apellidos hispanos variados.
 - Situaciones distintas de estas, que ya existen: {seen}.'''
 DEFAULT_CONTEXT = "tickets de la mesa de ayuda de una empresa mediana"
+# Lo que tiene que estar en los hechos de cada texto. Sin esto, al pedirle que no nombre la categoría, gemma3 escribía
+# tickets de «seguridad» sin rastro de ataque (carpetas lentas, licencias, impresoras): Jev rechazó 88 de 210.
+SIGNALS = {
+    "hardware": "síntomas de un equipo físico: no enciende, se daña, falla un periférico o una impresora, o hay que comprar o reemplazar equipo",
+    "software": "una aplicación concreta que da un error, se cierra, no se instala o necesita licencia, mientras la conexión funciona",
+    "redes": "fallas de conexión: wifi, cable, VPN o internet caídos o lentos, que afectan a varios servicios o personas del mismo lugar",
+    "accesos": "un problema rutinario de identidad: contraseña olvidada o vencida, cuenta bloqueada por intentos, alta de usuario o permiso denegado a una carpeta o sistema",
+    "correo": "fallas del correo, el calendario o las videollamadas: mensajes que no llegan o no salen, calendarios que no sincronizan, llamadas que se cortan",
+    "seguridad": "una amenaza concreta: un correo o mensaje que pide credenciales o trae un enlace o adjunto sospechoso, una alerta del antivirus, un archivo malicioso, o un acceso, cambio o transacción que la persona no reconoce",
+}
 
 
 class Ticket(BaseModel):
@@ -107,7 +118,8 @@ def leaks(text, category):
 def prompt_for(spec, context, seen, rng, count=PER_CALL):
     category, priority, blocking = spec
     name, _, criterion = CATEGORIES[category]
-    return PROMPT.format(n=count, context=context, team=name, criterion=criterion, priority=PRIORITIES[priority][0],
+    return PROMPT.format(n=count, context=context, team=name, criterion=criterion, signals=SIGNALS[category],
+                         priority=PRIORITIES[priority][0],
                          priority_text=PRIORITIES[priority][1], blocking="sí" if blocking else "no",
                          areas=", ".join(rng.sample(AREAS, 4)), seen="; ".join(seen[-30:]) or "ninguna")
 
@@ -157,14 +169,17 @@ def read(path=CSV_PATH):
                  "bloquea": r["bloquea"] == "true", "contexto": r["contexto"]} for r in csv.DictReader(f)]
 
 
-def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
-    """Genera unas n filas repartidas entre las 36 combinaciones y las añade al CSV. Devuelve (filas, costo).
+def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None, categories=None):
+    """Genera unas n filas repartidas entre las combinaciones y las añade al CSV. Devuelve (filas, costo).
+
+    categories limita las combinaciones a esas categorías, para reforzar las que tienen pocos casos válidos.
 
     Cada combinación se escribe en cuanto termina: si el proceso se corta, lo generado queda en el CSV.
     """
     taken = {norm(t["titulo"]) for t in TICKETS} | {norm(r["titulo"]) for r in read(path)}
     seed = seed if seed is not None else time.time_ns()
-    specs = random.Random(seed).sample(SPECS, min(n, len(SPECS)))  # Con n < 36, n combinaciones al azar.
+    pool = [s for s in SPECS if not categories or s[0] in categories]
+    specs = random.Random(seed).sample(pool, min(n, len(pool)))  # Con pocas filas, combinaciones al azar.
     per_spec = -(-n // len(specs))
     path.parent.mkdir(parents=True, exist_ok=True)
     written, lock = [], threading.Lock()
@@ -222,11 +237,13 @@ def main():
     parser.add_argument("--modelo", help="por defecto gemma3:12b en Ollama y openai/gpt-5.6-luna en OpenRouter")
     parser.add_argument("--ollama", default="http://localhost:11434", help="URL del servidor de Ollama")
     parser.add_argument("--salida", type=Path, default=CSV_PATH)
+    parser.add_argument("--categoria", action="append", choices=list(CATEGORIES),
+                        help="solo esta categoría (se puede repetir); por defecto, las seis")
     args = parser.parse_args()
     llm = (Ollama(args.modelo or "gemma3:12b", args.ollama) if args.backend == "ollama"
            else OpenRouter(args.modelo or "openai/gpt-5.6-luna"))
     started = time.time()
-    rows, cost = generate(llm, args.n, args.prompt, args.salida)
+    rows, cost = generate(llm, args.n, args.prompt, args.salida, categories=args.categoria)
     counts = {c: sum(r["categoria"] == c for r in rows) for c in CATEGORIES}
     print(f"{len(rows)} filas nuevas en {args.salida} ({len(read(args.salida))} en total) en {time.time() - started:.0f} s"
           + (f" por US${cost:.3f}" if cost else "") + f" · por categoría: {counts}")

@@ -1,4 +1,5 @@
 """Generador de datos sintéticos con un LLM falso: reparto, filtros y CSV."""
+import random
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,6 +43,15 @@ class SynthChecks(unittest.TestCase):
             self.assertFalse(any(c["bloquea"] for c in cases if c["referencia"][1] in ("baja", "media")))
             synth.generate(FakeLLM(), 36, "otro contexto", path, seed=2)  # Se añade sin repetir la cabecera.
             self.assertEqual(len(synth.read(path)), 108)
+
+    def test_categories_limit_the_combinations_and_prompt_demands_signals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows, _ = synth.generate(FakeLLM(), 12, "banco", Path(tmp) / "c.csv", seed=3, categories=["seguridad"])
+        self.assertEqual({r["categoria"] for r in rows}, {"seguridad"})
+        self.assertEqual(len(rows), 12)
+        prompt = synth.prompt_for(("seguridad", "alta", False), "banco", [], random.Random(0))
+        self.assertIn(synth.SIGNALS["seguridad"], prompt)
+        self.assertEqual(set(synth.SIGNALS), set(CATEGORIES))
 
     def test_parse_rejects_free_text_and_thin_tickets(self):
         words = " ".join(["palabra"] * 30)
