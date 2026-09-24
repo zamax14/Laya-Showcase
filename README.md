@@ -1,12 +1,15 @@
 <div align="center">
 
-# Laya Showcase
+# Arbiter
 
-**Cinco demos en el navegador para ver decidir a [Laya](https://huggingface.co/convaiinnovations/laya),
-un modelo de decisión open source que corre en tu CPU o en tu GPU.**
+**Cinco demos y un benchmark para comparar modelos de decisión con los mismos casos.**
+
+El selector de la barra superior alterna entre dos modelos locales, [Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)
+y [Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b), y dos de pago vía [OpenRouter](https://openrouter.ai),
+[Jev 1.13](https://openrouter.ai/typesafe/jev-1.13) y GPT-5.6 Luna. Cada modelo conserva su propio estado en las demos.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-6c4ee3?logo=python&logoColor=white)](#empezar)
-[![Modelo: Laya](https://img.shields.io/badge/modelo-Laya%20multilingual-ffc53d?logo=huggingface&logoColor=black)](https://huggingface.co/convaiinnovations/laya)
+[![Modelo: Laya Multilingual](https://img.shields.io/badge/modelo-Laya%20Multilingual-ffc53d?logo=huggingface&logoColor=black)](https://huggingface.co/convaiinnovations/laya-multilingual)
 [![GPU opcional](https://img.shields.io/badge/GPU-opcional%20·%2018×-76b900?logo=nvidia&logoColor=white)](#con-gpu)
 [![Frontend sin build](https://img.shields.io/badge/frontend-sin%20build-4fa8f0)](#cómo-está-hecho)
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-2fbf94)](LICENSE)
@@ -27,7 +30,7 @@ Le das un estado (un ticket, un correo, un JSON) y preguntas de tres tipos:
 | `noul` | sí o no, con su probabilidad | ¿Encaja esta cocina con «comida picante»? |
 
 Todo sale de una sola pasada del modelo, con probabilidades calibradas y sin texto que parsear ni
-alucinar. Es de [ConvAI Innovations](https://huggingface.co/convaiinnovations/laya), con licencia
+alucinar. Es de [ConvAI Innovations](https://huggingface.co/convaiinnovations/laya-multilingual), con licencia
 Apache-2.0, y sus autores la comparan con TypeSafe Jev en su ficha de Hugging Face. Aquí se usa el
 checkpoint **multilingüe** (mmBERT-base, 322 M de parámetros), en CPU o GPU y en español.
 
@@ -67,13 +70,14 @@ El GIF de arriba es el modo Paso a paso.
 
 | Semáforo | Confianza | Qué significa | Aciertos medidos |
 |---|---|---|---|
-| 🟢 Verde | más de 80 % | Asignado sin revisión | 6 de 7 |
-| 🟡 Amarillo | de 60 a 80 % | Un humano confirma | 4 de 5 |
-| 🔴 Rojo | menos de 60 % | Un humano decide | 2 de 8 |
+| 🟢 Verde | más de 80 % | Asignado sin revisión | 4 de 6 |
+| 🟡 Amarillo | de 60 a 80 % | Un humano confirma | 5 de 6 |
+| 🔴 Rojo | menos de 60 % | Un humano decide | 3 de 7 |
 
-El semáforo es la gracia de la demo: Laya acierta la categoría en 12 de 19 tickets, pero su
-confianza separa bien lo fiable de lo dudoso. «Ayuda urgente, no me funciona nada» sale en rojo,
-como debe.
+El semáforo es la gracia de la demo: Laya acierta la categoría en 12 de 19 tickets, y lo dudoso se
+concentra en rojo. «Ayuda urgente, no me funciona nada» sale en rojo, como debe. Cada ticket está
+escrito como lo escribiría quien lo pide (síntomas, mensajes de error literales, qué probó, impacto y
+plazos), sin pistas de la respuesta: un test lo comprueba.
 
 <img src="docs/tickets.png" alt="Mesa de ayuda con el tablero agrupado por experto y un ticket en revisión" width="880">
 
@@ -106,7 +110,7 @@ preguntas tipadas y una regla:
 
 El catálogo entero está a la vista con su descripción, para inventar peticiones y juzgar el
 resultado. Sobre las ocho peticiones de ejemplo, la ruta sale completa en 4 y clavada en 3; acierta
-15 de las 23 llamadas y añade 6 de más.
+15 de las 23 llamadas y añade 4 de más.
 
 <img src="docs/herramientas.png" alt="Ruta de llamadas: el catálogo de 20 herramientas, la distribución por servidor y la herramienta elegida" width="880">
 
@@ -163,7 +167,97 @@ python3 -m venv .venv
 ```
 
 Se abre `http://127.0.0.1:8000`. La primera vez descarga el checkpoint de Hugging Face (~650 MB);
-después funciona sin internet. `--port 8001` cambia el puerto y `--no-browser` no abre el navegador.
+después funciona sin internet. Los pesos quedan en `.model-cache/huggingface/` dentro del proyecto.
+`--port 8001` cambia el puerto y `--no-browser` no abre el navegador.
+
+### Probar Kev
+
+Necesitas [uv](https://docs.astral.sh/uv/). Desde la raíz del proyecto, instala Kev una vez:
+
+```bash
+./scripts/setup-kev.sh
+.venv/bin/python server.py
+```
+
+El script instala la versión de Kev que se probó en un entorno separado, con PyTorch para CUDA y
+`flash-linear-attention`. Kev-0.8B es un Qwen3.5 híbrido y sin esos kernels sus capas lineales usan
+la implementación de referencia: 275 ms por ticket en lugar de 70. Arbiter arranca Kev al
+seleccionarlo y lo apaga al salir, también con `kill`. La primera carga descarga los pesos a `.model-cache/`.
+
+**Un modelo local en la GPU a la vez.** Laya ocupa 1,6 GB y Kev unos 3,7 GB; en una GPU de 6 GB no
+caben juntos, y Kev caía a CPU en fp32 sin avisar. Al elegir un modelo local, Arbiter libera los
+demás; volver a Laya cuesta unos 3 s de recarga. Si Laya se queda sin memoria en plena inferencia pasa a
+CPU, y la barra superior lo dice.
+
+### Probar Jev y GPT vía OpenRouter
+
+Guarda tu llave de [OpenRouter](https://openrouter.ai/keys) en `OPENROUTER_API_KEY` o en un archivo
+`openrouter` en la raíz (está en `.gitignore`, igual que `HF_TOKEN`). Sin llave, esos modelos salen
+deshabilitados con el motivo.
+
+- **Jev 1.13** (`typesafe/jev-1.13`) habla System One, el mismo contrato que Kev, en
+  `POST https://openrouter.ai/api/v1/systemone`.
+- **GPT-5.6 Luna** (`openai/gpt-5.6-luna`) responde con salida estructurada: un JSON Schema generado
+  a partir de las preguntas le impide salirse de las opciones. OpenRouter no da logprobs para este
+  modelo, así que sus probabilidades son **autodeclaradas** y la interfaz lo marca. Va con
+  `reasoning.effort: none`: ~1,4 s por ticket frente a ~3,1 s con `minimal`.
+
+`remote.py` deja cada respuesta con la forma de Laya, así las cinco demos funcionan igual con
+cualquiera. La barra superior muestra lo gastado en la sesión y el Atlas lanza 8 países a la vez
+con los modelos por API, porque 176 llamadas en serie tardan minutos.
+
+### Benchmark
+
+**Benchmark** ejecuta los 20 tickets con los modelos que marques y muestra cada respuesta en cuanto
+sale. Hace tres preguntas, una de cada tipo: categoría (`choice`), prioridad (`score`) y si alguien no
+puede trabajar ahora (`noul`, que solo existe en el benchmark). Medido en una RTX 4050 de portátil,
+suite `tickets-v2`:
+
+| | Laya Multilingual | Kev-0.8B | Jev 1.13 | GPT-5.6 Luna |
+|---|---|---|---|---|
+| Dónde corre | GPU local | GPU local | API | API |
+| Categoría | 12/19 | 17/19 | **19/19** | **19/19** |
+| Prioridad exacta (a ±1 nivel) | 10/20 (20) | 12/20 (20) | 12/20 (20) | **14/20** (20) |
+| Bloqueo, acierto y Brier | 15/20 · 0,178 | 12/20 · 0,216 | **19/20 · 0,048** | **19/20** · 0,054 |
+| Aciertos en verde | 4/6 | 5/5 | 18/18 | 18/18 |
+| Latencia p50 (p95) | **27 ms** (31) | 70 ms (72) | 311 ms (601) | 1421 ms (1955) |
+| Costo de 21 llamadas | local | local | $0,0007 | $0,0058 |
+
+Laya es entre 11 y 50 veces más rápida que los modelos por API, pero en este conjunto se queda muy
+por debajo en acierto. Su punto fuerte es que su confianza avisa: lo que falla sale en amarillo o rojo.
+Jev empata con GPT en categoría y bloqueo, con menos de un cuarto de la latencia y un octavo del costo.
+
+Las referencias son criterios de esta demo, no un conjunto de evaluación externo, y 20 tickets no
+miden la precisión general. Las latencias por API incluyen la red. Cada ejecución se descarga en
+JSON con la huella de tickets y preguntas, para comparar solo ejecuciones que midieron lo mismo.
+
+### Ajuste fino para la Mesa de ayuda
+
+Laya sin ajustar acierta la categoría en 12 de 19 tickets; su propio README dice que es una base rápida para
+especializar, no un modelo que funcione bien sin entrenar. El ajuste tiene dos pasos:
+
+```bash
+# 1. Datos sintéticos con Ollama (o --backend openrouter). Se añaden a data/sintetico.csv.
+.venv/bin/python synth.py --prompt "tickets de TI de una empresa mediana" --n 720
+.venv/bin/python synth.py --prompt "incidencias reportadas por enfermería en un hospital" --n 200 --modelo gemma3:12b
+
+# 2. Entrenamiento: prueba corta con tope de 3 GB de GPU, o completo en una GPU de 12 GB o más.
+.venv/bin/python scripts/finetune_mesa.py
+.venv/bin/python scripts/finetune_mesa.py --completo
+```
+
+- **Datos.** `synth.py` pide cada texto para una combinación fija de categoría, prioridad y bloqueo, repartidas por
+  igual, así que la etiqueta se conoce por construcción. `--prompt` solo cambia el contexto: sector, tipo de texto,
+  tono. Descarta los textos que delatan la respuesta y los títulos repetidos o copiados del benchmark.
+- **Profesor.** Jev responde las mismas preguntas sobre cada caso. Su distribución suaviza el objetivo (30 %) y
+  descarta los casos que no ve en la categoría pedida. Sus respuestas quedan en `data/profesor.jsonl`, y solo se
+  pagan las nuevas: unos 4 centavos por cada 1.000 casos. Sin llave, o con `--sin-profesor`, se entrena con la
+  etiqueta suavizada.
+- **Receta.** RLCD, la del [notebook oficial de Laya](https://github.com/NandhaKishorM/laya/blob/main/notebooks/laya_finetune_typed_decisions_2xT4_kaggle.ipynb):
+  reglas de puntuación propias más entropía cruzada suave, calibración con casos apartados y la mejor época según la
+  validación.
+- **Medición.** Compara base y ajustada en validación y en los 20 tickets del benchmark, que nunca entran al
+  entrenamiento. El modelo queda en `.model-cache/laya-mesa-de-ayuda/` con sus cifras en `resultados.json`.
 
 ### Con GPU
 
@@ -203,16 +297,22 @@ flowchart LR
     S --> H["tools.py"]
     S --> A["atlas.py"]
     S --> C["city.py"]
-    T & R & H & A & C --> M["fastload.py<br/>una sola instancia de Laya"]
+    T & R & H & A & C --> M["Modelo seleccionado"]
+    M --> L["fastload.py<br/>Laya"]
+    M --> K["kev_model.py<br/>Kev local"]
+    M --> O["remote.py<br/>Jev y GPT vía OpenRouter"]
+    S --> BM["benchmark.py"] --> M
 ```
 
-- **Sin dependencias extra.** Aparte de `laya`, solo la biblioteca estándar de Python. El frontend
-  no tiene paso de compilación, y la tipografía va incluida.
-- **Resultados en streaming.** El Atlas y la Mesa de ayuda reciben cada resultado por SSE en cuanto
-  sale. Una consulta nueva cancela la anterior en el servidor.
-- **Un modelo para todo.** Las cinco demos comparten una instancia de Laya con las inferencias en
-  serie. Antes de cada inferencia se comprueba que el estado cabe en el contexto, porque Laya lo
-  truncaría en silencio.
+- **Entornos separados.** Laya y Kev necesitan versiones diferentes de PyTorch. El frontend no
+  tiene paso de compilación, y la tipografía va incluida.
+- **Resultados en streaming.** El Atlas, la Mesa de ayuda y el benchmark reciben cada resultado por
+  SSE en cuanto sale. Una consulta nueva cancela la anterior en el servidor, y cerrar la pestaña del
+  benchmark detiene las llamadas pendientes.
+- **Un contrato para todos.** Cada modelo expone `predict(state, questions)` y `normalize` en
+  `remote.py` deja cualquier respuesta con la forma de Laya.
+- **Un estado por modelo.** Las cinco demos usan el modelo seleccionado y conservan sus estados
+  por separado. Laya comprueba el contexto antes de inferir porque lo truncaría en silencio.
 
 ## Lo que aprendimos
 
@@ -248,6 +348,13 @@ Cada decisión de diseño salió de medir con el modelo real:
   tiene que pasar por una persona: la decisión puede ser del modelo, la ejecución no.
 - **Las instrucciones en inglés clasifican mejor**, aunque el ticket esté en español: la prioridad
   acierta 11/20 frente a 7/20.
+- **El contexto rico va en el estado, no en la pregunta.** Con tickets detallados, unos criterios de
+  categoría largos con reglas de desempate daban 10/19; los cortos con palabras clave, 13/19. Lo mismo
+  en las otras demos: alargar las preguntas del enrutador bajaba de 15 a 12 las llamadas acertadas, y
+  describir cada acción de City bajaba del 30 % al 24 % las acciones legales. Lo que sí ayudó fue
+  darle a cada herramienta su descripción completa como opción: 4 llamadas de más en lugar de 6.
+- **Un benchmark que dice la respuesta no mide nada.** Una versión de los tickets traía frases como
+  «no es un fallo de monitores»; un test rechaza ahora esas pistas y el nombre de la propia categoría.
 - **Torch solo CPU por defecto.** El entorno pasa de 5,6 GB a 1,2 GB, a la misma velocidad en CPU.
 - **GPU sin compilar nada.** torch 2.14 manda una operación del encoder a Triton, que necesita
   `Python.h` para compilar. Con su interruptor oficial `TORCH_DISABLE_NATIVE_JIT=1` usa la operación
@@ -262,7 +369,12 @@ sección de costuras más arriba.
 
 ```
 ├── server.py        servidor y API
-├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU
+├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU, y lectura de llaves
+├── kev_model.py     Kev local: arranca y apaga su servidor en otro entorno
+├── remote.py        Jev y GPT vía OpenRouter, y la normalización de respuestas
+├── benchmark.py     suite de tickets, métricas y eventos del benchmark
+├── synth.py         datos sintéticos etiquetados para reentrenar, con Ollama u OpenRouter
+├── scripts/         instalación de Kev y ajuste fino de Laya para la Mesa de ayuda
 ├── tickets.py       Mesa de ayuda: tickets, preguntas y semáforo
 ├── courses.py       Ruta: catálogo, objetivos, prerrequisitos y bucle de decisión
 ├── tools.py         Herramientas: catálogo MCP, preguntas por vuelta y encadenado de argumentos
@@ -287,12 +399,14 @@ Cubren el semáforo y el reparto de tickets, el catálogo y el bucle de la Ruta 
 final garantizado y respuestas fuera de los candidatos), el enrutado de herramientas (encadenado de
 argumentos, parada y respuestas inválidas), las fichas y la calibración del Atlas, las reglas de
 City (también con conductores que eligen mal y viajes sorteados), la API con un modelo
-falso (streaming, cancelación, errores del modelo) y la proyección y los colores del mapa.
+falso (streaming, cancelación, errores del modelo, benchmark y liberación de GPU), los adaptadores de
+OpenRouter sin red (esquema, normalización, costo) y la proyección y los colores del mapa.
 
 ## Créditos
 
-- **[Laya](https://huggingface.co/convaiinnovations/laya)** de ConvAI Innovations, Apache-2.0. Los
+- **[Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)** de ConvAI Innovations, Apache-2.0. Los
   pesos no se incluyen: se descargan de Hugging Face.
+- **[Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b)** de Jared Palmer, y **Jev** de TypeSafe vía OpenRouter.
 - **Mapa** de [Natural Earth](https://www.naturalearthdata.com/), dominio público.
 - **Tipografía** [Nunito](https://github.com/googlefonts/nunito), SIL Open Font License 1.1.
 - **Fichas de cocina, tickets, cursos y herramientas** redactados con Claude: simplifican y son
