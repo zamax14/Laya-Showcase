@@ -103,10 +103,10 @@ def leaks(text, category):
     return any(h in text for h in LEAK_HINTS) or CATEGORIES[category][0].lower() in text
 
 
-def prompt_for(spec, context, seen, rng):
+def prompt_for(spec, context, seen, rng, count=PER_CALL):
     category, priority, blocking = spec
     name, _, criterion = CATEGORIES[category]
-    return PROMPT.format(n=PER_CALL, context=context, team=name, criterion=criterion, priority=PRIORITIES[priority][0],
+    return PROMPT.format(n=count, context=context, team=name, criterion=criterion, priority=PRIORITIES[priority][0],
                          priority_text=PRIORITIES[priority][1], blocking="sí" if blocking else "no",
                          areas=", ".join(rng.sample(AREAS, 4)), seen="; ".join(seen[-30:]) or "ninguna")
 
@@ -159,8 +159,9 @@ def read(path=CSV_PATH):
 def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
     """Genera unas n filas repartidas entre las 36 combinaciones y las añade al CSV. Devuelve (filas, costo)."""
     taken = {norm(t["titulo"]) for t in TICKETS} | {norm(r["titulo"]) for r in read(path)}
-    per_spec = -(-n // len(SPECS))
     seed = seed if seed is not None else time.time_ns()
+    specs = random.Random(seed).sample(SPECS, min(n, len(SPECS)))  # Con n < 36, n combinaciones al azar.
+    per_spec = -(-n // len(specs))
 
     def one(spec):
         # Las llamadas de una combinación van en serie para que cada una vea los títulos ya usados.
@@ -170,7 +171,7 @@ def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
             if len(rows) >= per_spec:
                 break
             try:
-                batch, spent = llm(prompt_for(spec, context, seen, rng))
+                batch, spent = llm(prompt_for(spec, context, seen, rng, min(PER_CALL, per_spec - len(rows))))
             except ValidationError as exc:
                 print(f"{category}/{priority}/{blocking}: respuesta descartada, {exc.error_count()} errores de formato", flush=True)
                 continue
@@ -187,7 +188,7 @@ def generate(llm, n, context=DEFAULT_CONTEXT, path=CSV_PATH, seed=None):
         return rows[:per_spec], cost
 
     with ThreadPoolExecutor(llm.parallel) as pool:
-        results = list(pool.map(one, random.Random(seed).sample(SPECS, len(SPECS))))
+        results = list(pool.map(one, specs))
     llm.unload()
     created = datetime.now(timezone.utc).isoformat(timespec="seconds")
     rows = [{**r, "id": hashlib.sha1((r["titulo"] + r["descripcion"]).encode()).hexdigest()[:12],
