@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="440" viewBox="0 0 880 440" role="img" aria-label="Acierto por pregunta">
+<rect x="4" y="4" width="875" height="435" rx="12" fill="#0d0d0d"/>
+<rect x="1" y="1" width="875" height="435" rx="12" fill="white" stroke="#0d0d0d" stroke-width="2"/>
+<text x="24" y="36" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="20" font-weight="700" fill="#0d0d0d">Acierto por pregunta</text>
+<text x="24" y="57" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">Porcentaje correcto: 19 categorías con referencia; 20 prioridades y bloqueos</text>
+<rect x="72" y="74" width="15" height="15" rx="3" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="95" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Laya Multilingual</text>
+<rect x="262" y="74" width="15" height="15" rx="3" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="285" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Laya reentrenada</text>
+<rect x="452" y="74" width="15" height="15" rx="3" fill="#ff8e3c" stroke="#0d0d0d" stroke-width="2"/>
+<text x="475" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Jev 1.13</text>
+<rect x="642" y="74" width="15" height="15" rx="3" fill="#d9376e" stroke="#0d0d0d" stroke-width="2"/>
+<text x="665" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">GPT-5.6 Luna</text>
+<line x1="72" x2="840" y1="354.0" y2="354.0" stroke="#d4d5d9"/>
+<text x="62" y="358.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">0 %</text>
+<line x1="72" x2="840" y1="308.4" y2="308.4" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="312.4" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">20 %</text>
+<line x1="72" x2="840" y1="262.8" y2="262.8" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="266.8" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">40 %</text>
+<line x1="72" x2="840" y1="217.2" y2="217.2" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="221.20000000000002" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">60 %</text>
+<line x1="72" x2="840" y1="171.6" y2="171.6" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="175.6" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">80 %</text>
+<line x1="72" x2="840" y1="126.0" y2="126.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="130.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">100 %</text>
+<g><title>Laya Multilingual · Categoría: 63 %</title><path d="M107.8,354 V214.0 Q107.8,210.0 111.8,210.0 H147.7 Q151.7,210.0 151.7,214.0 V354 Z" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="129.8" y="202.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">63 %</text>
+<g><title>Laya reentrenada · Categoría: 89 %</title><path d="M154.7,354 V154.0 Q154.7,150.0 158.7,150.0 H194.5 Q198.5,150.0 198.5,154.0 V354 Z" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="176.6" y="142.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">89 %</text>
+<g><title>Jev 1.13 · Categoría: 100 %</title><path d="M201.5,354 V130.0 Q201.5,126.0 205.5,126.0 H241.3 Q245.3,126.0 245.3,130.0 V354 Z" fill="#ff8e3c" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="223.4" y="118.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">100 %</text>
+<g><title>GPT-5.6 Luna · Categoría: 100 %</title><path d="M248.3,354 V130.0 Q248.3,126.0 252.3,126.0 H288.2 Q292.2,126.0 292.2,130.0 V354 Z" fill="#d9376e" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="270.2" y="118.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">100 %</text>
+<text x="200.0" y="382" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="13" font-weight="700" fill="#0d0d0d">Categoría</text>
+<g><title>Laya Multilingual · Prioridad exacta: 50 %</title><path d="M363.8,354 V244.0 Q363.8,240.0 367.8,240.0 H403.7 Q407.7,240.0 407.7,244.0 V354 Z" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="385.8" y="232.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">50 %</text>
+<g><title>Laya reentrenada · Prioridad exacta: 60 %</title><path d="M410.7,354 V221.2 Q410.7,217.2 414.7,217.2 H450.5 Q454.5,217.2 454.5,221.2 V354 Z" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="432.6" y="209.2" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">60 %</text>
+<g><title>Jev 1.13 · Prioridad exacta: 65 %</title><path d="M457.5,354 V209.8 Q457.5,205.8 461.5,205.8 H497.3 Q501.3,205.8 501.3,209.8 V354 Z" fill="#ff8e3c" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="479.4" y="197.8" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">65 %</text>
+<g><title>GPT-5.6 Luna · Prioridad exacta: 75 %</title><path d="M504.3,354 V187.0 Q504.3,183.0 508.3,183.0 H544.2 Q548.2,183.0 548.2,187.0 V354 Z" fill="#d9376e" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="526.2" y="175.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">75 %</text>
+<text x="456.0" y="382" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="13" font-weight="700" fill="#0d0d0d">Prioridad exacta</text>
+<g><title>Laya Multilingual · Bloqueo: 75 %</title><path d="M619.8,354 V187.0 Q619.8,183.0 623.8,183.0 H659.7 Q663.7,183.0 663.7,187.0 V354 Z" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="641.8" y="175.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">75 %</text>
+<g><title>Laya reentrenada · Bloqueo: 95 %</title><path d="M666.7,354 V141.4 Q666.7,137.4 670.7,137.4 H706.5 Q710.5,137.4 710.5,141.4 V354 Z" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="688.6" y="129.4" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">95 %</text>
+<g><title>Jev 1.13 · Bloqueo: 95 %</title><path d="M713.5,354 V141.4 Q713.5,137.4 717.5,137.4 H753.3 Q757.3,137.4 757.3,141.4 V354 Z" fill="#ff8e3c" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="735.4" y="129.4" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">95 %</text>
+<g><title>GPT-5.6 Luna · Bloqueo: 95 %</title><path d="M760.3,354 V141.4 Q760.3,137.4 764.3,137.4 H800.2 Q804.2,137.4 804.2,141.4 V354 Z" fill="#d9376e" stroke="#0d0d0d" stroke-width="2"/></g>
+<text x="782.2" y="129.4" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">95 %</text>
+<text x="712.0" y="382" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="13" font-weight="700" fill="#0d0d0d">Bloqueo</text>
+<text x="24" y="416" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="10" font-weight="400" fill="#696969">tickets-v2 · huella 676cc9872e85 · 2026-09-24 · Laya cuda r82d57fc4</text>
+</svg>

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="440" viewBox="0 0 880 440" role="img" aria-label="Latencia según la longitud del contexto">
+<rect x="4" y="4" width="875" height="435" rx="12" fill="#0d0d0d"/>
+<rect x="1" y="1" width="875" height="435" rx="12" fill="white" stroke="#0d0d0d" stroke-width="2"/>
+<text x="24" y="36" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="20" font-weight="700" fill="#0d0d0d">Latencia según la longitud del contexto</text>
+<text x="24" y="57" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">Mediana por ticket (tres preguntas) en una RTX 4070 Ti SUPER</text>
+<rect x="72" y="74" width="15" height="15" rx="3" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="95" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Laya Multilingual</text>
+<rect x="302" y="74" width="15" height="15" rx="3" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="325" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Laya reentrenada</text>
+<line x1="72" x2="840" y1="354.0" y2="354.0" stroke="#d4d5d9"/>
+<text x="62" y="358.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">0 ms</text>
+<line x1="72" x2="840" y1="297.0" y2="297.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="301.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">150 ms</text>
+<line x1="72" x2="840" y1="240.0" y2="240.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="244.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">300 ms</text>
+<line x1="72" x2="840" y1="183.0" y2="183.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="187.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">450 ms</text>
+<line x1="72" x2="840" y1="126.0" y2="126.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="130.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">600 ms</text>
+<text x="148.8" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">original</text>
+<text x="148.8" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~123 tokens</text>
+<rect x="95.5" y="349.9" width="51.3" height="4.1" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="121.15200000000002" y="342.858" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">11 ms</text>
+<rect x="150.8" y="349.9" width="51.3" height="4.1" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="176.448" y="342.858" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">11 ms</text>
+<text x="302.4" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">1k</text>
+<text x="302.4" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~948 tokens</text>
+<rect x="249.1" y="340.9" width="51.3" height="13.1" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="274.752" y="333.89" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">34 ms</text>
+<rect x="304.4" y="341.0" width="51.3" height="13.0" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="330.048" y="333.966" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">34 ms</text>
+<text x="456.0" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">2k</text>
+<text x="456.0" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~1.893 tokens</text>
+<rect x="402.7" y="326.5" width="51.3" height="27.5" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="428.35200000000003" y="319.526" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">72 ms</text>
+<rect x="458.0" y="326.9" width="51.3" height="27.1" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="483.648" y="319.868" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">71 ms</text>
+<text x="609.6" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">4k</text>
+<text x="609.6" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~3.976 tokens</text>
+<rect x="556.3" y="273.8" width="51.3" height="80.2" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="581.952" y="266.782" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">211 ms</text>
+<rect x="611.6" y="273.4" width="51.3" height="80.6" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="637.248" y="266.402" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">212 ms</text>
+<text x="763.1999999999999" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">8k</text>
+<text x="763.1999999999999" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~7.450 tokens</text>
+<rect x="709.9" y="148.2" width="51.3" height="205.8" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="735.5519999999999" y="141.19199999999998" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">542 ms</text>
+<rect x="765.2" y="145.5" width="51.3" height="208.5" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="790.848" y="138.532" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">549 ms</text>
+<text x="24" y="418" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">tickets-v2-largo · huella 676cc9872e85-69 · 2026-09-24</text>
+</svg>

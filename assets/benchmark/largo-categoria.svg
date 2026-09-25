@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="440" viewBox="0 0 880 440" role="img" aria-label="Categoría según la longitud del contexto">
+<rect x="4" y="4" width="875" height="435" rx="12" fill="#0d0d0d"/>
+<rect x="1" y="1" width="875" height="435" rx="12" fill="white" stroke="#0d0d0d" stroke-width="2"/>
+<text x="24" y="36" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="20" font-weight="700" fill="#0d0d0d">Categoría según la longitud del contexto</text>
+<text x="24" y="57" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">Porcentaje correcto en 19 tickets, con el ticket al inicio de un hilo de correo de hasta 8k tokens</text>
+<rect x="72" y="74" width="15" height="15" rx="3" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="95" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Laya Multilingual</text>
+<rect x="302" y="74" width="15" height="15" rx="3" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="325" y="87" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">Laya reentrenada</text>
+<line x1="72" x2="840" y1="354.0" y2="354.0" stroke="#d4d5d9"/>
+<text x="62" y="358.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">0 %</text>
+<line x1="72" x2="840" y1="297.0" y2="297.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="301.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">25 %</text>
+<line x1="72" x2="840" y1="240.0" y2="240.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="244.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">50 %</text>
+<line x1="72" x2="840" y1="183.0" y2="183.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="187.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">75 %</text>
+<line x1="72" x2="840" y1="126.0" y2="126.0" stroke="#d4d5d9" stroke-dasharray="3 4"/>
+<text x="62" y="130.0" text-anchor="end" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="400" fill="#696969">100 %</text>
+<text x="148.8" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">original</text>
+<text x="148.8" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~123 tokens</text>
+<rect x="95.5" y="210.0" width="51.3" height="144.0" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="121.15200000000002" y="203.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">63 %</text>
+<rect x="150.8" y="150.0" width="51.3" height="204.0" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="176.448" y="143.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">89 %</text>
+<text x="302.4" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">1k</text>
+<text x="302.4" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~948 tokens</text>
+<rect x="249.1" y="198.0" width="51.3" height="156.0" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="274.752" y="191.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">68 %</text>
+<rect x="304.4" y="174.0" width="51.3" height="180.0" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="330.048" y="167.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">79 %</text>
+<text x="456.0" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">2k</text>
+<text x="456.0" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~1.893 tokens</text>
+<rect x="402.7" y="198.0" width="51.3" height="156.0" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="428.35200000000003" y="191.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">68 %</text>
+<rect x="458.0" y="150.0" width="51.3" height="204.0" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="483.648" y="143.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">89 %</text>
+<text x="609.6" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">4k</text>
+<text x="609.6" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~3.976 tokens</text>
+<rect x="556.3" y="186.0" width="51.3" height="168.0" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="581.952" y="178.99999999999997" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">74 %</text>
+<rect x="611.6" y="162.0" width="51.3" height="192.0" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="637.248" y="154.99999999999997" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">84 %</text>
+<text x="763.1999999999999" y="378" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="12" font-weight="700" fill="#0d0d0d">8k</text>
+<text x="763.1999999999999" y="394" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">~7.450 tokens</text>
+<rect x="709.9" y="174.0" width="51.3" height="180.0" rx="4" fill="#4fa8f0" stroke="#0d0d0d" stroke-width="2"/>
+<text x="735.5519999999999" y="167.0" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">79 %</text>
+<rect x="765.2" y="162.0" width="51.3" height="192.0" rx="4" fill="#2fbf94" stroke="#0d0d0d" stroke-width="2"/>
+<text x="790.848" y="154.99999999999997" text-anchor="middle" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="700" fill="#0d0d0d">84 %</text>
+<text x="24" y="418" text-anchor="start" font-family="Nunito,system-ui,sans-serif" font-size="11" font-weight="400" fill="#696969">tickets-v2-largo · huella 676cc9872e85-69 · 2026-09-24</text>
+</svg>
