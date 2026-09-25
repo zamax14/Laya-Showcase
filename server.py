@@ -189,7 +189,8 @@ def handler_for(apps):
         def do_GET(self):
             url = urlparse(self.path)
             app = self.current_app()
-            routes = {"/api/status": lambda: self.send_json({**app.status(), "selected": self.selected(), "models": describe(apps)}),
+            routes = {"/api/status": lambda: self.send_json({**app.status(), "selected": self.selected(), "models": describe(apps),
+                                                              "benchmark": {"suite": benchmark.SUITE, "fingerprint": benchmark.fingerprint()}}),
                       "/api/benchmark/stream": lambda: self.stream_benchmark(parse_qs(url.query).get("models", [""])[0]),
                       "/api/atlas/countries": lambda: self.send_bytes(app.countries, "application/json; charset=utf-8"),
                       "/api/atlas/query": lambda: self.stream_query(parse_qs(url.query).get("q", [""])[0]),
@@ -298,7 +299,9 @@ def handler_for(apps):
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            keys = [k for k in requested.split(",") if k in apps] or list(apps)
+            keys = requested.split(",") if requested else [k for k, item in apps.items() if getattr(item.model, "device", None) != "api"]
+            if not keys or any(k not in apps or getattr(apps[k].model, "device", None) == "api" for k in keys):
+                return self.write_event("failed", "El benchmark por API se carga desde la corrida guardada; aquí solo se mide el modelo local.")
             if not benchmarking.acquire(blocking=False):
                 return self.write_event("failed", "Ya hay un benchmark en curso en otra pestaña.")
             try:

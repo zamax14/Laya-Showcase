@@ -59,12 +59,12 @@ def run(models):
                 "calibrated": getattr(model, "calibrated", True)}
         yield "model", {**info, "status": "loading"}
         try:
+            spent = getattr(model, "cost", 0.0)
             started = time.perf_counter()
             if hasattr(model, "load"):
                 model.load()
             model.predict(ticket_state(TICKETS[0]), QUESTIONS)  # Calentamiento fuera de la medición.
             load_s = round(time.perf_counter() - started, 2)
-            spent = getattr(model, "cost", 0.0)
             yield "model", {**info, "status": "running", "device": getattr(model, "device", None), "load_s": load_s}
             rows = []
             for ticket in TICKETS:

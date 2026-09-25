@@ -193,6 +193,14 @@ class ServerChecks(unittest.TestCase):
         self.assertEqual(sum(band["total"] for band in summary["lights"].values()), 19)
         self.assertLessEqual(summary["p50_latency_ms"], summary["p95_latency_ms"])
 
+    def test_benchmark_rejects_api_model_to_preserve_saved_run(self):
+        self.model.device = "api"
+        try:
+            events = self.events(path="/api/benchmark/stream?models=laya")
+            self.assertEqual([kind for kind, _ in events], ["failed"])
+        finally:
+            del self.model.device
+
     def test_model_cookie_selects_an_independent_app(self):
         models = {"laya": App(FakeModel(), prior=defaultdict(float)),
                   "otro": App(FakeModel(), prior=defaultdict(float))}

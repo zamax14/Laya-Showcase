@@ -3,7 +3,7 @@ import { $, watchModel } from "./common.js";
 watchModel($("#model"));
 const PRIORITY = { baja: "Baja", media: "Media", alta: "Alta", critica: "Crítica" };
 const usd = new Intl.NumberFormat("es", { style: "currency", currency: "USD", maximumSignificantDigits: 2 });
-let tickets = [], models = {}, source, run;
+let tickets = [], models = {}, saved = {}, suite, source, run;
 
 function el(tag, attributes = {}, ...children) {
   const node = document.createElement(tag);
@@ -16,13 +16,32 @@ async function init() {
   const [status, desk] = await Promise.all([fetch("/api/status").then(r => r.json()), fetch("/api/tickets").then(r => r.json())]);
   tickets = desk.tickets;
   models = status.models;
+  suite = status.benchmark;
+  const snapshots = await Promise.all(["jev", "gpt-luna"].map(key =>
+    fetch(`/results/${key}.json`).then(r => r.ok ? r.json() : null).catch(() => null)));
+  for (const snapshot of snapshots) {
+    if (snapshot?.status === "complete" && snapshot.suite === suite.suite && snapshot.fingerprint === suite.fingerprint)
+      saved[snapshot.key] = snapshot;
+  }
   for (const [key, m] of Object.entries(models)) {
     const box = el("input", { type: "checkbox", value: key });
-    box.checked = m.status !== "error";
-    box.disabled = m.status === "error";
-    const label = el("label", { title: m.error ?? "" }, box, m.name, el("small", {}, m.remote ? "API" : "local"));
+    box.checked = !m.remote && m.status !== "error";
+    box.disabled = m.remote || m.status === "error";
+    const label = el("label", { title: m.error ?? "" }, box, m.name,
+                     el("small", {}, m.remote ? (saved[key] ? "API · guardado" : "API · sin corrida") : "local"));
     $("#pick").append(label);
   }
+  showSaved();
+}
+
+function showSaved(keys = Object.keys(saved)) {
+  run = { ...suite, created_at: new Date().toISOString(), models: { ...saved } };
+  if (!keys.length) return;
+  buildTable(keys);
+  for (const key of Object.keys(saved))
+    for (const row of saved[key].rows) fillRow({ key, ...row });
+  renderCards();
+  $("#download").hidden = false;
 }
 
 function setProgress(key, text) {
@@ -84,7 +103,8 @@ function renderCards() {
   const done = Object.values(run.models).filter(s => !s.error);
   const best = METRICS.map(([, , value, higher]) => done.length > 1 ? (higher ? Math.max : Math.min)(...done.map(value)) : null);
   $("#results").replaceChildren(...Object.values(run.models).map(s => {
-    const where = s.device === "api" ? "vía OpenRouter" : s.device === "cuda" ? "en GPU" : s.device ? "en CPU" : "";
+    const where = s.status === "complete" ? `vía OpenRouter · guardado ${s.created_at.slice(0, 10)}` :
+      s.device === "api" ? "vía OpenRouter" : s.device === "cuda" ? "en GPU" : s.device ? "en CPU" : "";
     const panel = el("section", { class: "panel result" }, el("h2", {}, s.name), el("p", { class: "where" }, where));
     if (!s.calibrated) panel.append(el("span", { class: "tag", title: "Sin logprobs: el modelo declara sus probabilidades" }, "confianza autodeclarada"));
     if (s.error) return panel.append(el("p", { class: "status" }, s.error)), panel;
@@ -109,18 +129,17 @@ function finish(message) {
 $("#run").addEventListener("click", () => {
   const keys = [...document.querySelectorAll("#pick input:checked")].map(box => box.value);
   if (!keys.length) return;
-  run = { models: {} };
-  $("#title").textContent = `Los mismos casos, ${keys.length} ${keys.length === 1 ? "modelo" : "modelos"}`;
+  const shown = [...new Set([...Object.keys(saved), ...keys])];
+  showSaved(shown);
+  $("#title").textContent = `Los mismos casos, ${shown.length} ${shown.length === 1 ? "modelo" : "modelos"}`;
   $("#run").disabled = true;
   $("#cancel").hidden = false;
   $("#download").hidden = true;
   $("#progress").replaceChildren();
-  $("#results").replaceChildren();
   for (const key of keys) setProgress(key, "en cola");
-  buildTable(keys);
   source = new EventSource(`/api/benchmark/stream?models=${keys.map(encodeURIComponent).join(",")}`);
   const on = (kind, handler) => source.addEventListener(kind, event => handler(JSON.parse(event.data)));
-  on("start", data => Object.assign(run, data));
+  on("start", ({ models: _keys, ...metadata }) => Object.assign(run, metadata));
   on("model", data => setProgress(data.key, data.status === "loading" ? "cargando…" : `0/${tickets.length}`));
   on("row", row => {
     fillRow(row);
@@ -143,7 +162,7 @@ $("#only-misses").addEventListener("change", event => $("#table").classList.togg
 
 $("#download").addEventListener("click", () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(run, null, 2)], { type: "application/json" }));
-  const link = el("a", { href: url, download: `arbiter-${run.suite}-${run.created_at.slice(0, 10)}.json` });
+  const link = el("a", { href: url, download: `pondera-${run.suite}-${run.created_at.slice(0, 10)}.json` });
   link.click();
   URL.revokeObjectURL(url);
 });
