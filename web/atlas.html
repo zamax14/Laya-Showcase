@@ -53,7 +53,7 @@
 
 
     .progress { height: 8px; border-radius: 4px; background: var(--line); margin: 14px 0 8px; overflow: hidden; }
-    .progress div { height: 100%; width: 0; background: var(--violet); border-radius: 4px; transition: width .3s ease; }
+    .progress div { height: 100%; width: 100%; background: var(--violet); border-radius: 4px; transform: scaleX(0); transform-origin: left; transition: transform .3s ease; }
 
     .side { display: grid; gap: 18px; }
     .detail h3 { font-size: 26px; }

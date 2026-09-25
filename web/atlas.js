@@ -149,7 +149,7 @@ function clearScores() {
 
 function paint() {
   for (const [id, path] of Object.entries(paths)) path.setAttribute("fill", colorFor(scores[id]) ?? "url(#unscored)");
-  $("#bar").style.width = `${100 * Object.keys(scores).length / countries.length}%`;
+  $("#bar").style.transform = `scaleX(${Object.keys(scores).length / countries.length})`;
   ranked = Object.keys(scores).sort((a, b) => scores[b] - scores[a] || byId[a].name.localeCompare(byId[b].name, "es"));
   $("#ranking").replaceChildren(...ranked.map(rankItem));
   $("#ranking-panel").hidden = !ranked.length;
