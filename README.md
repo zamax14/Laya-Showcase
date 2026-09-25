@@ -1,11 +1,11 @@
 <div align="center">
 
-# Arbiter
+# Pondera
 
-**Cinco demos y un benchmark para comparar modelos de decisión con los mismos casos.**
+**Benchmark de modelos de toma de decisiones sobre texto, con cinco demos para verlos decidir.**
 
-El selector de la barra superior alterna entre dos modelos locales, [Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)
-y [Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b), y dos de pago vía [OpenRouter](https://openrouter.ai),
+El selector de la barra superior alterna entre el modelo local [Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)
+y dos de pago vía [OpenRouter](https://openrouter.ai),
 [Jev 1.13](https://openrouter.ai/typesafe/jev-1.13) y GPT-5.6 Luna. Cada modelo conserva su propio estado en las demos.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-6c4ee3?logo=python&logoColor=white)](#empezar)
@@ -53,6 +53,9 @@ Las cinco tienen dos modos, y el que elijas se recuerda al cambiar de demo:
 - **Real-Time**: cada decisión aparece en cuanto Laya la toma, y al terminar un indicador muestra
   los milisegundos por decisión y si corrió en GPU o CPU.
 - **Paso a paso**: la misma inferencia, reproducida a ritmo de lectura para seguir cada decisión.
+
+Las cifras de rendimiento de estas demos corresponden a mediciones previas del checkpoint base
+en una RTX 4050; la comparación del modelo reentrenado sigue pendiente.
 
 | En Real-Time, RTX 4050 | Tanda completa | Por decisión |
 |---|---|---|
@@ -159,8 +162,7 @@ calle en 120 ms; en Paso a paso, en 700 ms y con una pausa para leer cada turno.
 ## Empezar
 
 ```bash
-git clone git@github.com:zamax14/Laya-Showcase.git
-cd Laya-Showcase
+cd /ruta/a/Text-Decision-Benchmark
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python server.py
@@ -170,24 +172,7 @@ Se abre `http://127.0.0.1:8000`. La primera vez descarga el checkpoint de Huggin
 después funciona sin internet. Los pesos quedan en `.model-cache/huggingface/` dentro del proyecto.
 `--port 8001` cambia el puerto y `--no-browser` no abre el navegador.
 
-### Probar Kev
-
-Necesitas [uv](https://docs.astral.sh/uv/). Desde la raíz del proyecto, instala Kev una vez:
-
-```bash
-./scripts/setup-kev.sh
-.venv/bin/python server.py
-```
-
-El script instala la versión de Kev que se probó en un entorno separado, con PyTorch para CUDA y
-`flash-linear-attention`. Kev-0.8B es un Qwen3.5 híbrido y sin esos kernels sus capas lineales usan
-la implementación de referencia: 275 ms por ticket en lugar de 70. Arbiter arranca Kev al
-seleccionarlo y lo apaga al salir, también con `kill`. La primera carga descarga los pesos a `.model-cache/`.
-
-**Un modelo local en la GPU a la vez.** Laya ocupa 1,6 GB y Kev unos 3,7 GB; en una GPU de 6 GB no
-caben juntos, y Kev caía a CPU en fp32 sin avisar. Al elegir un modelo local, Arbiter libera los
-demás; volver a Laya cuesta unos 3 s de recarga. Si Laya se queda sin memoria en plena inferencia pasa a
-CPU, y la barra superior lo dice.
+Si Laya se queda sin memoria en plena inferencia pasa a CPU, y la barra superior lo dice.
 
 ### Probar Jev y GPT vía OpenRouter
 
@@ -195,7 +180,7 @@ Guarda tu llave de [OpenRouter](https://openrouter.ai/keys) en `OPENROUTER_API_K
 `openrouter` en la raíz (está en `.gitignore`, igual que `HF_TOKEN`). Sin llave, esos modelos salen
 deshabilitados con el motivo.
 
-- **Jev 1.13** (`typesafe/jev-1.13`) habla System One, el mismo contrato que Kev, en
+- **Jev 1.13** (`typesafe/jev-1.13`) habla System One en
   `POST https://openrouter.ai/api/v1/systemone`.
 - **GPT-5.6 Luna** (`openai/gpt-5.6-luna`) responde con salida estructurada: un JSON Schema generado
   a partir de las preguntas le impide salirse de las opciones. OpenRouter no da logprobs para este
@@ -208,28 +193,80 @@ con los modelos por API, porque 176 llamadas en serie tardan minutos.
 
 ### Benchmark
 
-**Benchmark** ejecuta los 20 tickets con los modelos que marques y muestra cada respuesta en cuanto
-sale. Hace tres preguntas, una de cada tipo: categoría (`choice`), prioridad (`score`) y si alguien no
-puede trabajar ahora (`noul`, que solo existe en el benchmark). Medido en una RTX 4050 de portátil,
-suite `tickets-v2`:
+**Benchmark** hace tres preguntas por ticket: categoría (`choice`), prioridad (`score`) y bloqueo del
+trabajo (`noul`). Las corridas de Jev y Luna se hicieron una sola vez por API; Laya se midió con el
+checkpoint base `82d57fc4` y con la reentrenada de
+[Laya-Finetune](https://github.com/zamax14/Laya-Finetune), las dos en la misma GPU (RTX 4050 de portátil). La primera medición local en CPU también se conserva en
+[`web/results/`](web/results/). La página muestra las respuestas remotas guardadas y permite volver a
+medir Laya localmente. Solo compara resultados con la misma huella de tickets, preguntas y referencias
+(`tickets-v2`, `676cc9872e85`).
 
-| | Laya Multilingual | Kev-0.8B | Jev 1.13 | GPT-5.6 Luna |
-|---|---|---|---|---|
-| Dónde corre | GPU local | GPU local | API | API |
-| Categoría | 12/19 | 17/19 | **19/19** | **19/19** |
-| Prioridad exacta (a ±1 nivel) | 10/20 (20) | 12/20 (20) | 12/20 (20) | **14/20** (20) |
-| Bloqueo, acierto y Brier | 15/20 · 0,178 | 12/20 · 0,216 | **19/20 · 0,048** | **19/20** · 0,054 |
-| Aciertos en verde | 4/6 | 5/5 | 18/18 | 18/18 |
-| Latencia p50 (p95) | **27 ms** (31) | 70 ms (72) | 311 ms (601) | 1421 ms (1955) |
-| Costo de 21 llamadas | local | local | $0,0007 | $0,0058 |
+| Métrica | Laya base · GPU | Laya reentrenada · GPU | Jev 1.13 · API | GPT-5.6 Luna · API |
+|---|---:|---:|---:|---:|
+| Categoría | 12/19 | **17/19** | 19/19 | 19/19 |
+| Prioridad exacta (a ±1 nivel) | 10/20 (20/20) | 12/20 (20/20) | 13/20 (20/20) | 15/20 (20/20) |
+| Bloqueo, acierto y Brier | 15/20 · 0,178 | **19/20 · 0,042** | 19/20 · 0,048 | 19/20 · 0,052 |
+| Aciertos en verde | 4/6 | 15/17 | 18/18 | 18/18 |
+| Latencia p50 (p95) | 31 (33) ms | 32 (34) ms | 305 (418) ms | 1946 (2655) ms |
+| Costo de API, calentamiento y 20 tickets | $0 | $0 | $0,000708 | $0,006040 |
 
-Laya es entre 11 y 50 veces más rápida que los modelos por API, pero en este conjunto se queda muy
-por debajo en acierto. Su punto fuerte es que su confianza avisa: lo que falla sale en amarillo o rojo.
-Jev empata con GPT en categoría y bloqueo, con menos de un cuarto de la latencia y un octavo del costo.
+Las gráficas usan las mismas corridas y el estilo del repositorio de referencia:
 
-Las referencias son criterios de esta demo, no un conjunto de evaluación externo, y 20 tickets no
-miden la precisión general. Las latencias por API incluyen la red. Cada ejecución se descarga en
-JSON con la huella de tickets y preguntas, para comparar solo ejecuciones que midieron lo mismo.
+<img src="assets/benchmark/accuracy.png" width="760" alt="Acierto por categoría, prioridad y bloqueo de Laya base, Laya reentrenada, Jev y Luna">
+
+<img src="assets/benchmark/latency.png" width="760" alt="Latencia p50, media y p95 de Laya base, Laya reentrenada, Jev y Luna en milisegundos">
+
+<img src="assets/benchmark/cost.png" width="760" alt="Costo de API en dólares: las dos Laya cero, Jev y Luna de pago">
+
+Para regenerar los SVG y PNG desde los JSON guardados:
+`.venv/bin/python scripts/plot_benchmark.py --png` (requiere Chrome para los PNG). La Laya
+reentrenada entra en las gráficas si existe su corrida (`--ajustada`, por defecto
+`web/results/laya-reentrenada.json`); `--ajustada none` las dibuja sin ella. Para grabar la corrida de
+otro checkpoint reentrenado:
+`.venv/bin/python scripts/record_benchmark.py laya --device cuda --checkpoint .model-cache/laya-mesa-de-ayuda`.
+
+#### Contexto largo
+
+`scripts/benchmark_largo.py` pone cada ticket al inicio de un hilo de correo de 1k, 2k, 4k y 8k tokens de relleno de
+oficina, sin ningún problema de TI, y repite las tres preguntas. Laya admite 8.192 tokens, pero se entrenó con textos
+cortos. La reentrenada sostiene la categoría y el bloqueo, y la prioridad cae en las dos. La latencia pasa de 11 ms a
+~545 ms con 8k tokens en una RTX 4070 Ti SUPER, casi lo mismo que Jev.
+
+<img src="assets/benchmark/largo-bloqueo.png" width="760" alt="Bloqueo según la longitud del contexto: la base cae al 35 % y la reentrenada se mantiene entre 80 y 85 %">
+
+<img src="assets/benchmark/largo-categoria.png" width="760" alt="Categoría según la longitud del contexto, Laya base frente a la reentrenada">
+
+<img src="assets/benchmark/largo-prioridad.png" width="760" alt="Prioridad exacta según la longitud del contexto: las dos caen con relleno">
+
+<img src="assets/benchmark/largo-latencia.png" width="760" alt="Latencia según la longitud del contexto: de 11 ms a unos 545 ms con 8k tokens">
+
+Resultados en [`web/results/largo.json`](web/results/largo.json). Para repetirlo:
+`.venv/bin/python scripts/benchmark_largo.py` (con `--modelos` para medir solo algunos).
+
+Para guardar una corrida nueva después de modificar el conjunto o el modelo, usa
+`.venv/bin/python scripts/record_benchmark.py jev` o `gpt-luna`. Si la corrida ya está completa,
+el comando sale sin llamar a la API. Si cambian la huella o el checkpoint, exige una ruta nueva
+para conservar el resultado anterior. La latencia local en GPU y la latencia remota con red miden
+entornos distintos. Los $0 de Laya significan cero gasto de API; hardware y electricidad no se
+calcularon. El benchmark hace tres preguntas por ticket, frente a las dos de la demo de Mesa de
+ayuda. Las referencias son
+criterios de esta demo y 20 tickets no miden precisión general.
+
+### Añadir otro modelo de Hugging Face
+
+1. Fija el ID y la revisión del repositorio de HF. Descarga los archivos con
+   [`snapshot_download(repo_id, revision=...)`](https://huggingface.co/docs/huggingface_hub/guides/download).
+   `fastload.py` muestra cómo usar la caché local y limitar los archivos descargados.
+2. Crea un adaptador con `name`, `checkpoint`, `device`, `status` y
+   `predict(state, questions)`. Devuelve `{"answers": ...}` con la misma forma de Laya:
+   `choice` tiene `choice`, `confidence` y `probabilities`; `score` tiene `score` y
+   `probabilities`; `noul` tiene `noul` como probabilidad entre 0 y 1. Consulta
+   `fastload.SharedModel` y la normalización de `remote.py`.
+3. Añade una instancia al diccionario `apps` de `server.py`, con clave estable y `App(model)`.
+   Aparecerá en el selector y recibirá las mismas cinco demos. Si usa GPU, implementa
+   `release()` para que el servidor pueda liberar sus pesos al cambiar de modelo.
+4. Prueba una respuesta de cada tipo y ejecuta el benchmark con la misma suite. Guarda el ID,
+   revisión, huella y métricas junto a sus filas; separa resultados de otros checkpoints.
 
 ### Ajuste fino
 
@@ -278,13 +315,11 @@ flowchart LR
     S --> C["city.py"]
     T & R & H & A & C --> M["Modelo seleccionado"]
     M --> L["fastload.py<br/>Laya"]
-    M --> K["kev_model.py<br/>Kev local"]
     M --> O["remote.py<br/>Jev y GPT vía OpenRouter"]
     S --> BM["benchmark.py"] --> M
 ```
 
-- **Entornos separados.** Laya y Kev necesitan versiones diferentes de PyTorch. El frontend no
-  tiene paso de compilación, y la tipografía va incluida.
+- **Frontend sin build.** Las páginas se sirven directamente, sin paso de compilación.
 - **Resultados en streaming.** El Atlas, la Mesa de ayuda y el benchmark reciben cada resultado por
   SSE en cuanto sale. Una consulta nueva cancela la anterior en el servidor, y cerrar la pestaña del
   benchmark detiene las llamadas pendientes.
@@ -349,10 +384,10 @@ sección de costuras más arriba.
 ```
 ├── server.py        servidor y API
 ├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU, y lectura de llaves
-├── kev_model.py     Kev local: arranca y apaga su servidor en otro entorno
+├── kev_model.py     adaptador experimental de Kev, fuera de los modelos activos
 ├── remote.py        Jev y GPT vía OpenRouter, y la normalización de respuestas
 ├── benchmark.py     suite de tickets, métricas y eventos del benchmark
-├── scripts/         instalación de Kev y benchmark de contexto largo
+├── scripts/         herramientas de benchmark
 ├── tickets.py       Mesa de ayuda: tickets, preguntas y semáforo
 ├── courses.py       Ruta: catálogo, objetivos, prerrequisitos y bucle de decisión
 ├── tools.py         Herramientas: catálogo MCP, preguntas por vuelta y encadenado de argumentos
@@ -384,7 +419,7 @@ OpenRouter sin red (esquema, normalización, costo) y la proyección y los color
 
 - **[Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)** de ConvAI Innovations, Apache-2.0. Los
   pesos no se incluyen: se descargan de Hugging Face.
-- **[Kev-0.8B](https://huggingface.co/jaredpalmer/kev-0.8b)** de Jared Palmer, y **Jev** de TypeSafe vía OpenRouter.
+- **Jev** de TypeSafe vía OpenRouter.
 - **Mapa** de [Natural Earth](https://www.naturalearthdata.com/), dominio público.
 - **Tipografía** [Nunito](https://github.com/googlefonts/nunito), SIL Open Font License 1.1.
 - **Fichas de cocina, tickets, cursos y herramientas** redactados con Claude: simplifican y son
