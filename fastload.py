@@ -19,7 +19,7 @@ def secret(env, filename):
     return value or None
 
 
-if secret("HF_TOKEN", "HF_TOKEN"):  # Descargas autenticadas de Hugging Face, también para Kev.
+if secret("HF_TOKEN", "HF_TOKEN"):  # Descargas autenticadas de Hugging Face.
     os.environ["HF_TOKEN"] = secret("HF_TOKEN", "HF_TOKEN")
 HF_HOME = ROOT / ".model-cache" / "huggingface"
 os.environ["HF_HOME"] = str(HF_HOME)

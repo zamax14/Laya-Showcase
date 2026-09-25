@@ -195,23 +195,23 @@ class ServerChecks(unittest.TestCase):
 
     def test_model_cookie_selects_an_independent_app(self):
         models = {"laya": App(FakeModel(), prior=defaultdict(float)),
-                  "kev": App(FakeModel(), prior=defaultdict(float))}
+                  "otro": App(FakeModel(), prior=defaultdict(float))}
         models["laya"].model.device, released = "cuda", []
         models["laya"].model.release = lambda: released.append("laya")
         server = serve(models, port=0)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{server.server_address[1]}"
         try:
-            request = urllib.request.Request(base + "/api/model?name=kev", method="POST")
+            request = urllib.request.Request(base + "/api/model?name=otro", method="POST")
             with urllib.request.urlopen(request) as response:
                 cookie = response.headers["Set-Cookie"].split(";", 1)[0]
             request = urllib.request.Request(base + "/api/status", headers={"Cookie": cookie})
             with urllib.request.urlopen(request) as response:
-                self.assertEqual(json.load(response)["selected"], "kev")
+                self.assertEqual(json.load(response)["selected"], "otro")
             request = urllib.request.Request(base + "/api/city/step", method="POST", headers={"Cookie": cookie})
             urllib.request.urlopen(request).close()
-            self.assertEqual(released, ["laya"])  # Kev entra en la GPU: Laya la deja libre.
-            self.assertEqual(models["kev"].trip.view()["tick"], 1)
+            self.assertEqual(released, ["laya"])
+            self.assertEqual(models["otro"].trip.view()["tick"], 1)
             self.assertEqual(models["laya"].trip.view()["tick"], 0)
         finally:
             server.shutdown()

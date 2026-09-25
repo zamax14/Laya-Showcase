@@ -1,4 +1,4 @@
-"""Servidor local de Laya Showcase: sirve web/ y pone a Laya detrás de una API pequeña.
+"""Servidor local de Pondera: sirve web/ y pone los modelos detrás de una API pequeña.
 
     python server.py            # abre http://127.0.0.1:8000
     python server.py --port 9000 --no-browser
@@ -139,7 +139,7 @@ def warm_model(model):
 
 
 def free_gpu(apps, keep):
-    """Un modelo local en la GPU a la vez: con 6 GB, Kev no cabe junto a Laya y caía a CPU."""
+    """Libera otros modelos locales antes de cargar uno en la GPU."""
     for key, app in apps.items():
         if key != keep and getattr(app.model, "device", None) == "cuda" and hasattr(app.model, "release"):
             app.model.release()
@@ -340,28 +340,26 @@ def warm(app):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Arbiter: demos y benchmarks de modelos de decisión")
+    parser = argparse.ArgumentParser(description="Pondera: benchmark de decisiones sobre texto")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true", help="no abrir el navegador")
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto",
                         help="dónde corre Laya; auto usa la GPU si torch la ve")
     args = parser.parse_args()
     from fastload import SharedModel
-    from kev_model import KevModel
     from remote import ChatModel, JevModel
     # Solo Laya tiene calibración por país en el Atlas; los demás parten de cero.
     apps = {"laya": App(SharedModel(device=args.device)),
-            "kev": App(KevModel(), prior=defaultdict(float)),
             "jev": App(JevModel(), prior=defaultdict(float)),
             "gpt-luna": App(ChatModel("openai/gpt-5.6-luna", "GPT-5.6 Luna"), prior=defaultdict(float))}
     try:
         server = serve(apps, args.port)
     except OSError as exc:
         raise SystemExit(f"No se pudo abrir el puerto {args.port} ({exc.strerror}); prueba con --port 8001")
-    # SIGTERM (kill, systemd, cerrar la terminal) sale como Ctrl+C: así atexit apaga Kev y libera la GPU.
+    # SIGTERM (kill, systemd, cerrar la terminal) sale como Ctrl+C y libera los recursos.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     url = f"http://127.0.0.1:{server.server_address[1]}"
-    print(f"Arbiter en {url} (Ctrl+C para salir)", flush=True)
+    print(f"Pondera en {url} (Ctrl+C para salir)", flush=True)
     # El modelo se carga mientras se abre la página.
     threading.Thread(target=warm, args=(apps["laya"],), daemon=True).start()
     if not args.no_browser:

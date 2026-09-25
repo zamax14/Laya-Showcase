@@ -107,7 +107,7 @@ class OpenRouterModel:
 
 
 class JevModel(OpenRouterModel):
-    """Jev habla System One, el mismo contrato que Kev: OpenRouter lo sirve en /v1/systemone."""
+    """Jev habla System One: OpenRouter lo sirve en /v1/systemone."""
     name = "Jev 1.13"
     checkpoint = "typesafe/jev-1.13"
 

@@ -1,4 +1,4 @@
-"""Kev local: Arbiter arranca su servidor en un entorno Python separado."""
+"""Kev local: Pondera arranca su servidor en un entorno Python separado."""
 import atexit
 import json
 import os
