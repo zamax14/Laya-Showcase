@@ -15,10 +15,6 @@ su propio estado en las demos. La primera prueba del playground de herramientas 
 [![Frontend sin build](https://img.shields.io/badge/frontend-sin%20build-4fa8f0)](#cómo-está-hecho)
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-2fbf94)](LICENSE)
 
-[![Video breve del playground de herramientas con Jev](assets/linkedin/system-one-playground-poster.png)](assets/linkedin/system-one-playground.mp4)
-
-[Ver el video breve del playground](assets/linkedin/system-one-playground.mp4)
-
 </div>
 
 ## Modelos y preguntas
@@ -160,14 +156,28 @@ calle en 120 ms; en Paso a paso, en 700 ms y con una pausa para leer cada turno.
 
 ## Empezar
 
+Para probar Jev y Luna, guarda una llave de [OpenRouter](https://openrouter.ai/keys) en
+`OPENROUTER_API_KEY` o en un archivo `openrouter` en la raíz. Después, con Python 3.10 o superior:
+
 ```bash
-cd /ruta/a/System-One-Playground
+git clone https://github.com/zamax14/System-One-Playground.git
+cd System-One-Playground
+python3 server.py --remote-only
+```
+
+Este modo usa solo la biblioteca estándar de Python. Abre `http://127.0.0.1:8000` y muestra
+Jev y Luna en el selector. Las llamadas a OpenRouter tienen costo; ninguna herramienta simulada
+se ejecuta de verdad.
+
+Para incluir también Laya local:
+
+```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python server.py
 ```
 
-Se abre `http://127.0.0.1:8000`. La primera vez descarga el checkpoint de Hugging Face (~650 MB);
+La primera vez descarga el checkpoint de Hugging Face (~650 MB);
 después funciona sin internet. Los pesos quedan en `.model-cache/huggingface/` dentro del proyecto.
 `--port 8001` cambia el puerto y `--no-browser` no abre el navegador.
 
@@ -175,8 +185,7 @@ Si Laya se queda sin memoria en plena inferencia pasa a CPU, y la barra superior
 
 ### Probar Jev y GPT vía OpenRouter
 
-Guarda tu llave de [OpenRouter](https://openrouter.ai/keys) en `OPENROUTER_API_KEY` o en un archivo
-`openrouter` en la raíz (está en `.gitignore`, igual que `HF_TOKEN`). Sin llave, esos modelos salen
+El archivo `openrouter` está en `.gitignore`, igual que `HF_TOKEN`. Sin llave, esos modelos salen
 deshabilitados con el motivo.
 
 - **Jev 1.13** (`typesafe/jev-1.13`) habla System One en
@@ -381,7 +390,6 @@ sección de costuras más arriba.
 ```
 ├── server.py        servidor y API
 ├── fastload.py      carga rápida y compartida de Laya, en CPU o GPU, y lectura de llaves
-├── kev_model.py     adaptador experimental de Kev, fuera de los modelos activos
 ├── remote.py        Jev y GPT vía OpenRouter, y la normalización de respuestas
 ├── benchmark.py     suite de tickets, métricas y eventos del benchmark
 ├── scripts/         herramientas de benchmark

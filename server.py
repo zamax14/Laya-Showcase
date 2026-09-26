@@ -166,7 +166,7 @@ def handler_for(apps):
             try:
                 cookie.load(self.headers.get("Cookie", ""))
             except Exception:
-                return "laya"
+                return next(iter(apps))
             key = cookie.get("arbiter_model")
             return key.value if key and key.value in apps else next(iter(apps))
 
@@ -342,19 +342,27 @@ def warm(app):
     print(f"Laya lista en {app.model.device.upper()} en {time.monotonic() - started:.1f} s", flush=True)
 
 
+def build_apps(device="auto", remote_only=False):
+    from remote import ChatModel, JevModel
+    apps = {}
+    if not remote_only:
+        from fastload import SharedModel
+        apps["laya"] = App(SharedModel(device=device))
+    apps["jev"] = App(JevModel(), prior=defaultdict(float))
+    apps["gpt-luna"] = App(ChatModel("openai/gpt-5.6-luna", "GPT-5.6 Luna"), prior=defaultdict(float))
+    return apps
+
+
 def main():
     parser = argparse.ArgumentParser(description="Pondera: benchmark de decisiones sobre texto")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true", help="no abrir el navegador")
+    parser.add_argument("--remote-only", action="store_true", help="solo Jev y Luna; no requiere instalar Laya ni PyTorch")
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto",
                         help="dónde corre Laya; auto usa la GPU si torch la ve")
     args = parser.parse_args()
-    from fastload import SharedModel
-    from remote import ChatModel, JevModel
     # Solo Laya tiene calibración por país en el Atlas; los demás parten de cero.
-    apps = {"laya": App(SharedModel(device=args.device)),
-            "jev": App(JevModel(), prior=defaultdict(float)),
-            "gpt-luna": App(ChatModel("openai/gpt-5.6-luna", "GPT-5.6 Luna"), prior=defaultdict(float))}
+    apps = build_apps(args.device, args.remote_only)
     try:
         server = serve(apps, args.port)
     except OSError as exc:
@@ -363,8 +371,8 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     url = f"http://127.0.0.1:{server.server_address[1]}"
     print(f"Pondera en {url} (Ctrl+C para salir)", flush=True)
-    # El modelo se carga mientras se abre la página.
-    threading.Thread(target=warm, args=(apps["laya"],), daemon=True).start()
+    if "laya" in apps:
+        threading.Thread(target=warm, args=(apps["laya"],), daemon=True).start()
     if not args.no_browser:
         webbrowser.open(url)
     try:
