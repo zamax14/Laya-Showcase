@@ -1,8 +1,8 @@
 <div align="center">
 
-# Pondera
+# System One Playground
 
-**Benchmark de modelos de toma de decisiones sobre texto, con cinco demos para verlos decidir.**
+**Benchmark de modelos de toma de decisiones sobre texto, con cinco demos para verlos decidir.** La plataforma se llama Pondera.
 
 El selector de la barra superior alterna entre el modelo local [Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)
 y dos de pago vía [OpenRouter](https://openrouter.ai),
@@ -162,7 +162,7 @@ calle en 120 ms; en Paso a paso, en 700 ms y con una pausa para leer cada turno.
 ## Empezar
 
 ```bash
-cd /ruta/a/Text-Decision-Benchmark
+cd /ruta/a/System-One-Playground
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python server.py
