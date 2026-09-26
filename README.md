@@ -100,9 +100,11 @@ que elige aportan algo, contando los que desbloquean a otro.
 
 ### Herramientas
 
-Un agente con 20 herramientas MCP repartidas en siete servidores. Escribes lo que quieres
-(«agenda una reunión con el cliente Nordia») y Laya traza la ruta de llamadas. Cada vuelta son tres
-preguntas tipadas y una regla:
+El playground propone rutas entre 20 herramientas ficticias agrupadas en siete servidores MCP
+simulados para una empresa B2B.
+Cada ficha indica parámetros, resultado y si es consulta o propuesta de una acción con efecto. Las
+herramientas **no se ejecutan**: los datos disponibles en la ruta son supuestos del plan, no respuestas
+de un CRM, correo o SQL real. Cada vuelta usa tres preguntas tipadas y una regla:
 
 | | Pregunta | Tipo |
 |---|---|---|
@@ -111,35 +113,29 @@ preguntas tipadas y una regla:
 | 3 | ¿Qué herramienta de ese servidor? | `choice` entre 2 y 4 |
 | 4 | ¿Le falta algún argumento? | regla: delante van las que lo producen |
 
-El catálogo entero está a la vista con su descripción, para inventar peticiones y juzgar el
-resultado. Sobre las ocho peticiones de ejemplo, la ruta sale completa en 4 y clavada en 3; acierta
-15 de las 23 llamadas y añade 4 de más.
+Hay diez casos sintéticos con varias etapas, dependencias y restricciones explícitas como «no envíes
+correo». Al terminar uno, la página muestra la ruta de referencia aparte del estado que recibe el
+modelo y señala pasos faltantes y de más. Se aceptan otros órdenes entre pasos independientes.
+
+Una primera corrida de esos diez casos con el mismo catálogo y la misma regla, el 26 de septiembre
+de 2026, dio este resultado. Es una sola corrida por modelo y las referencias son criterios de la
+demo, no una medida de capacidad general:
+
+| Modelo | Pasos esperados incluidos | Pasos de más | Casos sin faltantes ni extras |
+|---|---:|---:|---:|
+| Jev 1.13 | 29/36 | 11 | 3/10 |
+| GPT-5.6 Luna | 34/36 | 7 | 4/10 |
 
 <img src="docs/herramientas.png" alt="Ruta de llamadas: el catálogo de 20 herramientas, la distribución por servidor y la herramienta elegida" width="880">
 
 #### Dónde se rompe
 
-Es la demo donde más se le ven las costuras, y conviene enseñarlas. Con dos peticiones adversarias
-de varias intenciones («revisa el correo, compáralo con las cifras, deja la conclusión en la ficha
-y agenda una llamada»; «mira qué se dice en internet del competidor y déjalo en una nota, y ábreme
-un ticket por el correo de Nordia») salen tres fallos que se repiten:
-
-- **No remata.** De las cuatro acciones con efecto que se le pidieron entre las dos peticiones
-  —dejar una nota, abrir un ticket, agendar una llamada, dejar otra nota— **no ejecutó ninguna**.
-  Busca y lee bien; lo que cierra el encargo no lo elige nunca.
-- **Ejecuta lo que nadie pidió.** `enviar_correo` no aparecía en ninguna de las dos rutas correctas
-  y la eligió en las dos. Cuadra con la calibración: preguntando con `noul` herramienta a
-  herramienta, era la más sesgada del catálogo con diferencia (+7,4 en log-odds, decía que sí
-  incluso a «organiza mi día de mañana»). En un agente de verdad eso no es una ruta mala, es un
-  correo enviado a un cliente.
-- **Se ancla en las palabras de la petición.** Si el texto dice «correo» dos veces, vuelve al
-  servidor de Correo tres vueltas seguidas y el CRM no llega a entrar, aunque el historial de lo ya
-  llamado va en el estado de cada decisión.
-
-Lo primero que hay que arreglar no es el acierto, es el riesgo: marcar las cinco herramientas que
-escriben y exigirles un umbral de confianza como el semáforo de la Mesa de ayuda, para que se
-propongan en vez de ejecutarse. Eso tapa el segundo fallo; el primero pide otra cosa (una pregunta
-de cierre por intención en lugar de una global), y está sin medir.
+La primera prueba muestra que cubrir casi todos los pasos no basta: Jev propuso `enviar_correo` en
+«Incidencia desde correo» pese a «no respondas», y Luna añadió herramientas después de cubrir
+«Mover una oportunidad». Las acciones con efecto siguen siendo propuestas para revisión humana.
+También hay peticiones que quedan incompletas al alcanzar el límite de vueltas o cuando el modelo
+declara cubierta la petición antes de elegir la última herramienta. La comparación de la página
+permite ver el fallo caso por caso.
 
 ### Atlas
 
@@ -351,15 +347,13 @@ Cada decisión de diseño salió de medir con el modelo real:
 - **Laya no planifica dos pasos.** Elige bien el curso siguiente, pero nunca tomaba Git, y sin Git
   no llegaba a «Modelos en producción»: 4 de las 9 rutas se quedaban sin objetivo. Encadenar
   prerrequisitos es una regla; decidir cuál toca, del modelo.
-- **Un `choice` de 20 opciones no discrimina.** Elegir entre las 20 herramientas de golpe daba 1 de
-  8 rutas. Preguntando primero el servidor (7 opciones) y luego la herramienta de ese servidor (2 a
-  4), el servidor elegido pertenece a la ruta correcta en 7 de 8 peticiones.
-- **Cómo preguntes el «ya basta» decide la ruta.** Con «¿queda algo por hacer?» salían 1 de 8 rutas
-  clavadas; con la pregunta al revés, «¿lo ya llamado cubre la petición?», 3 de 8. Misma información,
-  distinta polaridad.
-- **Lo que el modelo no dispara son las acciones.** En el enrutador, las herramientas que escriben
-  son justo las que no elige, salvo una que elige siempre. Mientras eso siga así, lo irreversible
-  tiene que pasar por una persona: la decisión puede ser del modelo, la ejecución no.
+- **Un `choice` de 20 opciones no discrimina.** En una suite anterior de ocho casos con Laya, elegir
+  entre las 20 herramientas de golpe daba 1 de 8 rutas. Preguntando primero el servidor y luego la
+  herramienta, el servidor elegido pertenecía a la ruta correcta en 7 de 8 peticiones.
+- **Cómo preguntes el «ya basta» decide la ruta.** En esa suite anterior, «¿queda algo por hacer?»
+  daba 1 de 8 rutas clavadas; «¿lo ya llamado cubre la petición?» daba 3 de 8.
+- **Una ruta propuesta no es una acción ejecutada.** Los modelos pueden añadir pasos que el usuario
+  prohibió o detenerse antes del último paso. Las herramientas que escriben requieren revisión humana.
 - **Las instrucciones en inglés clasifican mejor**, aunque el ticket esté en español: la prioridad
   acierta 11/20 frente a 7/20.
 - **El contexto rico va en el estado, no en la pregunta.** Con tickets detallados, unos criterios de
