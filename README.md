@@ -4,24 +4,26 @@
 
 **Benchmark de modelos de toma de decisiones sobre texto, con cinco demos para verlos decidir.** La plataforma se llama Pondera.
 
-El selector de la barra superior alterna entre el modelo local [Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual)
-y dos de pago vía [OpenRouter](https://openrouter.ai),
-[Jev 1.13](https://openrouter.ai/typesafe/jev-1.13) y GPT-5.6 Luna. Cada modelo conserva su propio estado en las demos.
+El selector alterna entre [Jev 1.13](https://openrouter.ai/typesafe/jev-1.13), GPT-5.6 Luna
+(ambos vía [OpenRouter](https://openrouter.ai)) y el modelo local
+[Laya Multilingual](https://huggingface.co/convaiinnovations/laya-multilingual). Cada uno conserva
+su propio estado en las demos. La primera prueba del playground de herramientas compara Jev y Luna.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-6c4ee3?logo=python&logoColor=white)](#empezar)
-[![Modelo: Laya Multilingual](https://img.shields.io/badge/modelo-Laya%20Multilingual-ffc53d?logo=huggingface&logoColor=black)](https://huggingface.co/convaiinnovations/laya-multilingual)
+[![Modelos: Jev, Luna y Laya](https://img.shields.io/badge/modelos-Jev%20%7C%20Luna%20%7C%20Laya-ffc53d)](#modelos-y-preguntas)
 [![GPU opcional](https://img.shields.io/badge/GPU-opcional%20·%2018×-76b900?logo=nvidia&logoColor=white)](#con-gpu)
 [![Frontend sin build](https://img.shields.io/badge/frontend-sin%20build-4fa8f0)](#cómo-está-hecho)
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-2fbf94)](LICENSE)
 
-<img src="docs/mesa-de-ayuda.gif" alt="Laya asigna tickets de TI uno a uno: categoría, prioridad, experto y semáforo de confianza" width="880">
+[![Video breve del playground de herramientas con Jev](assets/linkedin/system-one-playground-poster.png)](assets/linkedin/system-one-playground.mp4)
+
+[Ver el video breve del playground](assets/linkedin/system-one-playground.mp4)
 
 </div>
 
-## ¿Qué es Laya?
+## Modelos y preguntas
 
-Laya es un modelo de decisión **no autorregresivo**: no escribe texto, responde preguntas tipadas.
-Le das un estado (un ticket, un correo, un JSON) y preguntas de tres tipos:
+Cada modelo recibe un estado (un ticket, un correo, un JSON) y preguntas tipadas de tres tipos:
 
 | Tipo | Qué responde | Ejemplo en estas demos |
 |---|---|---|
@@ -29,10 +31,11 @@ Le das un estado (un ticket, un correo, un JSON) y preguntas de tres tipos:
 | `score` | un nivel en una escala ordenada | ¿Qué prioridad tiene? |
 | `noul` | sí o no, con su probabilidad | ¿Encaja esta cocina con «comida picante»? |
 
-Todo sale de una sola pasada del modelo, con probabilidades calibradas y sin texto que parsear ni
-alucinar. Es de [ConvAI Innovations](https://huggingface.co/convaiinnovations/laya-multilingual), con licencia
-Apache-2.0, y sus autores la comparan con TypeSafe Jev en su ficha de Hugging Face. Aquí se usa el
-checkpoint **multilingüe** (mmBERT-base, 322 M de parámetros), en CPU o GPU y en español.
+El resultado común contiene la opción o puntuación y su distribución de probabilidades.
+Laya es **no autorregresivo** y responde estas preguntas en una pasada; Jev usa System One y Luna
+devuelve JSON estructurado. Las probabilidades de Luna son autodeclaradas, sin logprobs de la API.
+El checkpoint local de Laya es **multilingüe** (mmBERT-base, 322 M de parámetros), en CPU o GPU;
+es de [ConvAI Innovations](https://huggingface.co/convaiinnovations/laya-multilingual), con licencia Apache-2.0.
 
 ```python
 questions = {
@@ -50,8 +53,8 @@ agent.predict({"ticket": "No conecta la VPN desde casa. Trabajo en remoto y..."}
 
 Las cinco tienen dos modos, y el que elijas se recuerda al cambiar de demo:
 
-- **Real-Time**: cada decisión aparece en cuanto Laya la toma, y al terminar un indicador muestra
-  los milisegundos por decisión y si corrió en GPU o CPU.
+- **Real-Time**: cada decisión aparece en cuanto el modelo la toma, y al terminar un indicador muestra
+  los milisegundos por decisión y si corrió en GPU, CPU o vía API.
 - **Paso a paso**: la misma inferencia, reproducida a ritmo de lectura para seguir cada decisión.
 
 Las cifras de rendimiento de estas demos corresponden a mediciones previas del checkpoint base
@@ -67,9 +70,9 @@ en una RTX 4050; la comparación del modelo reentrenado sigue pendiente.
 
 ### Mesa de ayuda
 
-20 tickets de TI esperan en la cola. **Asignar con Laya** los toma uno a uno: categoría, prioridad,
+20 tickets de TI esperan en la cola. El modelo seleccionado los toma uno a uno: categoría, prioridad,
 el experto responsable y un **semáforo** que dice cuánta atención humana necesita la asignación.
-El GIF de arriba es el modo Paso a paso.
+La demo también ofrece el modo Paso a paso.
 
 | Semáforo | Confianza | Qué significa | Aciertos medidos |
 |---|---|---|---|
@@ -86,7 +89,7 @@ plazos), sin pistas de la respuesta: un test lo comprueba.
 
 ### Ruta
 
-Un estudiante, un objetivo y un catálogo de 17 cursos. Laya no escribe la ruta de una vez: en cada
+Un estudiante, un objetivo y un catálogo de 17 cursos. El modelo no escribe la ruta de una vez: en cada
 paso las reglas filtran los cursos cuyos prerrequisitos ya cumple y el modelo reparte probabilidad
 entre esos candidatos; el curso elegido actualiza sus habilidades y el estado vuelve a entrar. Es
 una política `P(acción | estado)` con el bucle a la vista: estado → candidatos → decisión → curso →
@@ -126,7 +129,7 @@ demo, no una medida de capacidad general:
 | Jev 1.13 | 29/36 | 11 | 3/10 |
 | GPT-5.6 Luna | 34/36 | 7 | 4/10 |
 
-<img src="docs/herramientas.png" alt="Ruta de llamadas: el catálogo de 20 herramientas, la distribución por servidor y la herramienta elegida" width="880">
+<img src="docs/herramientas.png" alt="Playground con Jev: herramientas, ruta propuesta y revisión frente a la referencia" width="880">
 
 #### Dónde se rompe
 
@@ -139,16 +142,16 @@ permite ver el fallo caso por caso.
 
 ### Atlas
 
-Escribe qué te apetece comer («comida picante», «fácil para vegetarianos») y Laya puntúa la
+Escribe qué te apetece comer («comida picante», «fácil para vegetarianos») y el modelo puntúa la
 cocina de los 176 países del mapa, que se colorea mientras llegan los resultados. Cada país tiene
-una ficha de cocina en español, y al tocarlo ves exactamente el texto que leyó Laya. En Paso a
-paso el mapa avanza país a país, con el panel siguiendo el país que Laya está leyendo.
+una ficha de cocina en español, y al tocarlo ves exactamente el texto que leyó. En Paso a
+paso el mapa avanza país a país, con el panel siguiendo el país que el modelo está leyendo.
 
 <img src="docs/atlas.png" alt="Atlas coloreado para «comida picante», con Indonesia seleccionada" width="880">
 
 ### City
 
-Laya conduce un taxi por una ciudad con calles de un sentido, semáforos y STOP. En cada turno
+El modelo conduce un taxi por una ciudad con calles de un sentido, semáforos y STOP. En cada turno
 reparte probabilidad entre siete acciones y la ciudad corrige lo que viole las reglas, y lo dice.
 **Sortear** cambia de sitio el taxi, al pasajero y el destino. En Real-Time el taxi recorre cada
 calle en 120 ms; en Paso a paso, en 700 ms y con una pausa para leer cada turno.
@@ -183,7 +186,7 @@ deshabilitados con el motivo.
   modelo, así que sus probabilidades son **autodeclaradas** y la interfaz lo marca. Va con
   `reasoning.effort: none`: ~1,4 s por ticket frente a ~3,1 s con `minimal`.
 
-`remote.py` deja cada respuesta con la forma de Laya, así las cinco demos funcionan igual con
+`remote.py` deja cada respuesta en el formato común, así las cinco demos funcionan igual con
 cualquiera. La barra superior muestra lo gastado en la sesión y el Atlas lanza 8 países a la vez
 con los modelos por API, porque 176 llamadas en serie tardan minutos.
 
@@ -254,7 +257,7 @@ criterios de esta demo y 20 tickets no miden precisión general.
    [`snapshot_download(repo_id, revision=...)`](https://huggingface.co/docs/huggingface_hub/guides/download).
    `fastload.py` muestra cómo usar la caché local y limitar los archivos descargados.
 2. Crea un adaptador con `name`, `checkpoint`, `device`, `status` y
-   `predict(state, questions)`. Devuelve `{"answers": ...}` con la misma forma de Laya:
+   `predict(state, questions)`. Devuelve `{"answers": ...}` con el contrato común:
    `choice` tiene `choice`, `confidence` y `probabilities`; `score` tiene `score` y
    `probabilities`; `noul` tiene `noul` como probabilidad entre 0 y 1. Consulta
    `fastload.SharedModel` y la normalización de `remote.py`.
@@ -320,7 +323,7 @@ flowchart LR
   SSE en cuanto sale. Una consulta nueva cancela la anterior en el servidor, y cerrar la pestaña del
   benchmark detiene las llamadas pendientes.
 - **Un contrato para todos.** Cada modelo expone `predict(state, questions)` y `normalize` en
-  `remote.py` deja cualquier respuesta con la forma de Laya.
+  `remote.py` adapta las respuestas remotas al formato común.
 - **Un estado por modelo.** Las cinco demos usan el modelo seleccionado y conservan sus estados
   por separado. Laya comprueba el contexto antes de inferir porque lo truncaría en silencio.
 

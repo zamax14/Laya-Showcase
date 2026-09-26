@@ -40,7 +40,7 @@ class App:
         self.model = model
         countries = load_countries()
         self.atlas = Evaluator(countries, model, prior)
-        # Se serializa una vez: la geometría pesa ~1 MB y no cambia. «texto» es exactamente lo que lee Laya.
+        # Se serializa una vez: la geometría pesa ~1 MB y no cambia. «texto» es lo que lee el modelo.
         self.countries = json.dumps(
             [{"id": c["id"], "name": c["name"], "texto": country_state(c), "polygons": c["polygons"]} for c in countries],
             ensure_ascii=False, separators=(",", ":")).encode()
@@ -228,7 +228,7 @@ def handler_for(apps):
                 self.send_json(action())
             except LookupError as exc:
                 self.send_json({"error": str(exc)}, HTTPStatus.CONFLICT)
-            except Exception as exc:  # Laya falló: el viaje no se movió y la interfaz lo dice.
+            except Exception as exc:  # Si falla el modelo, el viaje no se mueve y la interfaz lo dice.
                 self.send_json({"error": f"{type(exc).__name__}: {exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
         def send_static(self, relative):
