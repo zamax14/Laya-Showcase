@@ -15,14 +15,18 @@
     .tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
     /* Petición: el campo y los ejemplos. */
-    .ask { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
-    .ask input { flex: 1 1 380px; min-width: 0; height: 52px; padding: 0 20px; border: 0; border-radius: 999px;
-      background: var(--card); box-shadow: inset 0 0 0 2px var(--line); font-weight: 700; }
-    .ask input::placeholder { color: var(--muted); font-weight: 600; }
-    .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-    .examples button { border: 0; cursor: pointer; padding: 7px 14px; border-radius: 999px; background: var(--violet-soft);
-      color: var(--violet-deep); font: inherit; font-weight: 800; font-size: 13px; }
-    .examples button:hover { background: #e2dafb; }
+    .ask { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .ask textarea { flex: 1 1 380px; min-width: 0; min-height: 88px; padding: 14px 18px; border: 2px solid var(--line);
+      border-radius: 12px; background: var(--card); font: inherit; font-weight: 700; resize: vertical; }
+    .ask textarea::placeholder { color: var(--muted); font-weight: 600; }
+    .examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; margin-bottom: 16px; }
+    .examples button { border: 1px solid var(--line); cursor: pointer; padding: 10px 12px; border-radius: 12px;
+      background: var(--card); color: var(--ink); font: inherit; text-align: left; }
+    .examples button:hover { border-color: var(--violet); background: var(--violet-soft); }
+    .examples strong, .examples small { display: block; }
+    .examples strong { font-size: 13px; margin-bottom: 4px; }
+    .examples small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .intro-note { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
 
     .top { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 18px; align-items: start; }
 
@@ -42,6 +46,11 @@
     .tool code { font-weight: 900; font-size: 13px; color: var(--ink); }
     .tool.used code { color: var(--violet-deep); }
     .tool small { display: block; color: var(--muted); font-weight: 600; line-height: 1.35; }
+    .tool-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .mode-tag { padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase;
+      background: var(--bg); color: var(--muted); }
+    .mode-tag.propuesta { background: #fff1d9; color: #714900; }
+    .tool .contract { color: var(--ink-2); margin-top: 3px; }
 
     /* Escenario: una vuelta de decisión. */
     .stage { min-height: 560px; }
@@ -109,6 +118,14 @@
     .stop .tag { display: block; width: fit-content; margin-top: auto; padding-top: 3px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 800;
       background: var(--violet-soft); color: var(--violet-deep); }
     .empty { color: var(--muted); font-weight: 700; padding: 20px 4px; }
+    .review { margin-top: 18px; }
+    .review h2 { margin-bottom: 8px; }
+    .review p { color: var(--muted); margin-bottom: 12px; }
+    .review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .review-grid h3 { font-size: 13px; margin-bottom: 7px; }
+    .review-grid .chips { align-content: start; }
+    .chip.match { background: #e6f5ef; color: #176b53; }
+    .chip.miss { background: #fce8e8; color: #9c2731; }
     @keyframes pop { from { transform: scale(.9); opacity: 0; } }
 
     @media (max-width: 980px) {
@@ -126,7 +143,7 @@
   </header>
   <main>
     <div class="head">
-      <h1>Ruta de llamadas</h1>
+      <h1>Ruta de herramientas</h1>
       <div class="tools-row">
         <span class="speed" id="speed" aria-live="polite" hidden></span>
         <span id="mode"></span>
@@ -135,22 +152,34 @@
       </div>
     </div>
     <form class="ask" id="ask">
-      <input id="prompt" type="text" maxlength="300" autocomplete="off" placeholder="¿Qué quieres que haga el agente?">
+      <label class="visually-hidden" for="prompt">Petición para el agente</label>
+      <textarea id="prompt" maxlength="300" rows="3" placeholder="Describe el contexto, lo que necesitas y lo que no debe hacer el agente."></textarea>
       <button class="btn primary" id="trace" type="submit">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>Trazar ruta</button>
     </form>
     <div class="examples" id="examples"></div>
+    <p class="intro-note">Primera prueba: selecciona Jev o Luna. Escenario ficticio B2B; el modelo propone herramientas y las reglas añaden dependencias. Esta demo no ejecuta llamadas ni acciones.</p>
     <p class="status" id="status" aria-live="polite"></p>
     <div class="top">
       <section class="panel catalog" aria-label="Herramientas disponibles">
-        <h2>20 herramientas</h2>
+        <h2>20 herramientas y sus contratos</h2>
         <div id="catalog"></div>
       </section>
       <section class="panel stage" id="stage" aria-live="polite"></section>
     </div>
-    <section class="panel route" aria-label="Ruta de llamadas">
-      <h2>Llamadas <span class="muted" id="route-note"></span></h2>
+    <section class="panel route" aria-label="Ruta propuesta">
+      <h2>Ruta propuesta <span class="muted" id="route-note"></span></h2>
       <div class="track-row" id="track"></div>
+    </section>
+    <section class="panel review" id="review" aria-label="Evaluación de la ruta" hidden>
+      <h2>Comparación con la ruta de referencia</h2>
+      <p id="review-summary"></p>
+      <p>La referencia se usa solo para evaluar; el modelo no la recibe. Las tareas independientes pueden ir en otro orden.</p>
+      <div class="review-grid">
+        <div><h3>Pasos esperados</h3><div class="chips" id="expected"></div></div>
+        <div><h3>Faltantes</h3><div class="chips" id="missing"></div></div>
+        <div><h3>De más</h3><div class="chips" id="extra"></div></div>
+      </div>
     </section>
   </main>
   <script type="module" src="tools.js"></script>

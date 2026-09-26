@@ -1,7 +1,7 @@
 """Enrutado de herramientas sin modelo: reglas del bucle y encadenado de prerrequisitos."""
 import unittest
 
-from tools import CATALOG, DATA, EXAMPLES, MAX_TURNS, Route, SERVERS, TOOLS, public
+from tools import CATALOG, DATA, EXAMPLES, MAX_TURNS, Route, SERVERS, TOOLS, catalog, public
 
 
 def fake(server, tool, covered=0.0):
@@ -45,8 +45,57 @@ class CatalogChecks(unittest.TestCase):
                 self.assertIn(tool, CATALOG)
             self.assertNotIn("referencia", public(example))
 
+    def test_catalog_marks_actions_as_proposals_and_shows_dependencies(self):
+        items = {tool["id"]: tool for tool in catalog()}
+        self.assertEqual(items["enviar_correo"]["modo"], "propuesta")
+        self.assertEqual(items["crear_ticket"]["modo"], "propuesta")
+        self.assertEqual(items["leer_correo"]["modo"], "consulta")
+        self.assertIn("la ficha de un contacto", items["enviar_correo"]["necesita"])
+        self.assertTrue(all(tool["parametros"] and tool["devuelve"] for tool in items.values()))
+        self.assertIn("destinatario", items["enviar_correo"]["parametros"])
+        self.assertIn("ventas facturadas", items["consultar_sql"]["descripcion"])
+
+    def test_richer_cases_cover_multistep_routes_without_leaking_references(self):
+        self.assertGreaterEqual(len(EXAMPLES), 10)
+        self.assertTrue(all(len(case["referencia"]) >= 2 and len(case["texto"]) <= 300 for case in EXAMPLES))
+        self.assertTrue(any("enviar_correo" in case["referencia"] for case in EXAMPLES))
+        self.assertTrue(any("registrar_nota" in case["referencia"] and "buscar_web" in case["referencia"]
+                            for case in EXAMPLES))
+        self.assertTrue(all("referencia" not in public(case) for case in EXAMPLES))
+
 
 class LoopChecks(unittest.TestCase):
+    def test_model_sees_the_scenario_but_not_the_reference(self):
+        state = Route(EXAMPLES[0]["texto"]).state()
+        self.assertIn("entorno", state)
+        self.assertIn("Faro", state["entorno"])
+        self.assertNotIn("referencia", state)
+
+    def test_finished_example_reports_missing_and_extra_calls(self):
+        route = Route(EXAMPLES[0]["texto"])
+        route.turn(fake("correo", "enviar_correo"))
+        route.turn(fake("correo", "leer_correo", covered=.9))
+        review = route.view()["evaluacion"]
+        self.assertEqual(review["esperadas"], EXAMPLES[0]["referencia"])
+        self.assertEqual(review["de_mas"], ["enviar_correo"])
+        self.assertTrue(review["faltantes"])
+
+    def test_custom_prompt_has_no_reference(self):
+        self.assertIsNone(Route("Petición inventada por mí").view()["evaluacion"])
+
+    def test_exhausted_server_does_not_end_a_multi_server_request(self):
+        route = Route("Busca una fuente pública y después consulta ventas")
+        route.turn(fake("web", "abrir_pagina"))
+        record = route.turn(fake("web", "abrir_pagina", covered=0))
+        self.assertFalse(route.done)
+        self.assertNotEqual(record["servidor"]["elegido"], "web")
+
+    def test_stop_reason_is_model_neutral(self):
+        route = Route("Consulta ventas")
+        route.turn(fake("datos", "consultar_sql"))
+        route.turn(fake("datos", "graficar", covered=.9))
+        self.assertNotIn("Laya", route.reason)
+
     def test_rules_put_the_prerequisites_first(self):
         route = Route("Agenda una reunión con Nordia")
         record = route.turn(fake("agenda", "crear_evento"))

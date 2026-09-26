@@ -30,7 +30,8 @@ function el(tag, attrs = {}, ...children) {
 const chip = (text, kind = "") => el("span", { class: `chip ${kind}`.trim() }, text);
 
 $("#examples").replaceChildren(...data.ejemplos.map(example => {
-  const button = el("button", { type: "button" }, example.texto);
+  const button = el("button", { type: "button", title: example.texto },
+    el("strong", {}, example.titulo), el("small", {}, example.texto));
   button.addEventListener("click", () => { $("#prompt").value = example.texto; trace(); });
   return button;
 }));
@@ -50,7 +51,11 @@ function renderCatalog() {
       const mark = called.get(tool.id);
       return el("div", { class: mark ? "tool used" : "tool" },
         mark ? el("span", { class: mark.rule ? "n rule" : "n" }, mark.n) : el("span", {}),
-        el("div", {}, el("code", {}, tool.id), el("small", {}, tool.descripcion)));
+        el("div", {}, el("div", { class: "tool-name" }, el("code", {}, tool.id),
+          el("span", { class: `mode-tag ${tool.modo}` }, tool.modo)),
+          el("small", {}, tool.descripcion),
+          el("small", { class: "contract" }, `Entrada: ${tool.parametros.join(", ")}`),
+          el("small", { class: "contract" }, `Resultado: ${tool.devuelve}`)));
     }))));
 }
 
@@ -63,6 +68,15 @@ function renderRoute() {
         el("small", {}, CATALOG[call.id].servidor_nombre),
         call.regla ? el("span", { class: "tag" }, `hace falta ${call.porque}`) : null))
     : [el("p", { class: "empty" }, "Todavía sin llamadas")]));
+  const review = $("#review");
+  review.hidden = !view.evaluacion;
+  if (view.evaluacion) {
+    const { esperadas, faltantes, de_mas } = view.evaluacion;
+    $("#review-summary").textContent = `${esperadas.length - faltantes.length}/${esperadas.length} pasos esperados · ${de_mas.length} de más`;
+    $("#expected").replaceChildren(...esperadas.map(id => chip(id, faltantes.includes(id) ? "miss" : "match")));
+    $("#missing").replaceChildren(...(faltantes.length ? faltantes.map(id => chip(id, "miss")) : [chip("Ninguna", "match")]));
+    $("#extra").replaceChildren(...(de_mas.length ? de_mas.map(id => chip(id, "miss")) : [chip("Ninguna", "match")]));
+  }
 }
 
 /* Escenario: las tres preguntas de la vuelta y lo que añaden las reglas. */
@@ -72,7 +86,7 @@ function showIdle(title) {
     el("h3", {}, title ?? (view.peticion || "Escribe una petición o toca un ejemplo")),
     el("p", {}, view.done && view.llamadas.length
       ? `${view.llamadas.length} llamadas · ${view.reason}`
-      : "El modelo elige servidor y herramienta; las reglas encadenan los argumentos"))));
+      : "El modelo propone una ruta; las reglas añaden prerrequisitos. Ninguna herramienta se ejecuta."))));
 }
 
 function step(n, title, badge, body, wide) {
